@@ -314,12 +314,8 @@ export default function App() {
             <div class="grid">
               <Select
                 label="Anzahl"
-                value={String(settings.columns) as '1' | '2' | '3'}
-                options={[
-                  { value: '1', label: '1 Spalte' },
-                  { value: '2', label: '2 Spalten' },
-                  { value: '3', label: '3 Spalten' },
-                ]}
+                value={String(settings.columns)}
+                options={[1, 2, 3, 4, 5, 6].map((n) => ({ value: String(n), label: n === 1 ? '1 Spalte' : `${n} Spalten` }))}
                 onChange={(v) => setSettings('columns', +v)}
               />
               <NumberInput label="Abstand" unit="mm" min={2} max={30} value={settings.columnGap} onChange={set('columnGap')} />
@@ -502,7 +498,7 @@ export default function App() {
                 disabled={!source() || exportingOdt()}
                 title="Bearbeitbares Dokument für Word und LibreOffice (.odt). Die Linien der Notizspalte gibt es nur im PDF."
               >
-                {exportingOdt() ? 'Erzeuge ODT …' : 'ODT (Word)'}
+                {exportingOdt() ? 'Erzeuge Word-Datei …' : 'Word herunterladen'}
               </button>
               <button type="button" class="primary-btn" onClick={download} disabled={!source() || downloading()}>
                 {downloading() ? 'Erzeuge PDF …' : 'PDF herunterladen'}

@@ -126,6 +126,8 @@ export const FONTS: { name: string; files: string[]; note?: string }[] = [
   },
 ];
 
+export const MAX_COLUMNS = 6;
+
 export type LayoutSettings = Omit<Settings, 'translation' | 'reference'>;
 
 export const PRESETS: { name: string; description: string; settings: Partial<LayoutSettings> }[] = [
@@ -155,12 +157,12 @@ export const PRESETS: { name: string; description: string; settings: Partial<Lay
     },
   },
   {
-    name: 'Auswendiglernen',
-    description: 'A6-Karten, ohne Versnummern',
+    name: 'Übersicht A3',
+    description: 'A3 quer, vier Spalten, ganze Bücher auf wenigen Seiten',
     settings: {
-      paper: 'a6', landscape: true, fontSize: 12, marginTop: 10, marginBottom: 10, marginInner: 10, marginOuter: 10,
-      showBookTitle: false, chapterStyle: 'none', verseStyle: 'none', footnotes: 'none', showHeadings: false,
-      runningHeader: true, pageNumbers: false, justify: false,
+      paper: 'a3', landscape: true, columns: 4, columnGap: 8, columnRule: true, fontSize: 9.5,
+      marginTop: 15, marginBottom: 17, marginInner: 15, marginOuter: 15, lineSpacing: 0.55, paragraphSpacing: 0.4,
+      footnotes: 'none',
     },
   },
 ];

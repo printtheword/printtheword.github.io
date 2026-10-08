@@ -1,5 +1,5 @@
 import type { SelectedChapter } from '../lib/select.ts';
-import type { LayoutSettings } from '../lib/settings.ts';
+import { MAX_COLUMNS, type LayoutSettings } from '../lib/settings.ts';
 import type { Inline, Translation } from '../lib/types.ts';
 import { chapterHeading, chapterStyleFor, LABELS, reflowVerses, visibleBlocks } from '../lib/content.ts';
 
@@ -58,7 +58,7 @@ function preamble({ settings: s, translation, label }: DocumentInput): string {
   const bottom = num(s.marginBottom, 20);
   const inner = num(s.marginInner, 20);
   const outer = num(s.marginOuter, 20) + notes;
-  const cols = Math.max(1, Math.min(4, Math.round(num(s.columns, 1))));
+  const cols = Math.max(1, Math.min(MAX_COLUMNS, Math.round(num(s.columns, 1))));
   const gap = num(s.columnGap, 7);
   const margin = s.twoSided
     ? `(inside: ${mm(inner)}, outside: ${mm(outer)}, top: ${mm(top)}, bottom: ${mm(bottom)})`

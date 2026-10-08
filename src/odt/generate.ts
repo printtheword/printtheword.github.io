@@ -1,7 +1,7 @@
 import { strToU8, zipSync } from 'fflate';
 import { chapterHeading, chapterStyleFor, LABELS, reflowVerses, visibleBlocks } from '../lib/content.ts';
 import type { SelectedChapter } from '../lib/select.ts';
-import type { LayoutSettings } from '../lib/settings.ts';
+import { MAX_COLUMNS, type LayoutSettings } from '../lib/settings.ts';
 import type { HeadingKind, Inline } from '../lib/types.ts';
 import { pageSize, type DocumentInput, type Section } from '../typst/generate.ts';
 
@@ -70,7 +70,7 @@ function metaXml({ label, translation }: DocumentInput): string {
 `;
 }
 
-const columnCount = (s: LayoutSettings) => Math.max(1, Math.min(4, Math.round(num(s.columns, 1))));
+const columnCount = (s: LayoutSettings) => Math.max(1, Math.min(MAX_COLUMNS, Math.round(num(s.columns, 1))));
 
 /** Vertical space taken by header/footer inside the page margin (mm). */
 const HF_HEIGHT = 4;

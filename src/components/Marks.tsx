@@ -78,7 +78,7 @@ function MarkRule(props: { mark: Mark; index: number; count: number; legend: boo
         <input
           type="text"
           value={m().terms}
-          placeholder="z. B. Pfand, Erbe, im Herrn"
+          placeholder="z. B. Jesus, Gott"
           aria-label={`Wörter für Markierung ${props.index + 1}`}
           onInput={(e) => update('terms', e.currentTarget.value)}
         />
@@ -177,7 +177,7 @@ export function Marks(props: { settings: Settings; setSettings: SetStoreFunction
       </Show>
       <p class="help">
         Jedes Vorkommen wird gleich markiert, Groß-/Kleinschreibung egal. Mehrere Wörter oder Sätze mit Komma trennen (
-        <code>Pfand, Erbe</code>); <code>glaub*</code> trifft alle Wörter, die mit „glaub“ beginnen.
+        <code>Jesus, Gott</code>); <code>glaub*</code> trifft alle Wörter, die mit „glaub“ beginnen.
       </p>
       <Toggle label="Legende am Ende" checked={props.settings.markLegend} onChange={(v) => set('markLegend', v)} />
       <Show when={props.settings.markLegend}>

@@ -61,7 +61,7 @@ export default function App() {
     // the preview only sets roughly the first pages – large selections would be slow
     const short = truncateDocument(doc, charsPerPage(settings) * PREVIEW_PAGES);
     const preview = short.truncated ? generateTypst(short.doc) : typst;
-    return { typst, preview, truncated: short.truncated, label: doc.label };
+    return { doc, typst, preview, truncated: short.truncated, label: doc.label };
   });
 
   const fonts = createMemo(() => {
@@ -102,6 +102,15 @@ export default function App() {
     }),
   );
 
+  function save(data: Uint8Array, type: string, name: string) {
+    const url = URL.createObjectURL(new Blob([data as BlobPart], { type }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  }
+
   const [downloading, setDownloading] = createSignal(false);
   async function download() {
     const src = source();
@@ -111,16 +120,28 @@ export default function App() {
     try {
       const res = await compile({ source: src.typst, fonts: fonts(), format: 'pdf' });
       if (!res.ok || !res.pdf) throw new Error(res.ok ? 'Kein PDF erzeugt' : res.error);
-      const url = URL.createObjectURL(new Blob([res.pdf as BlobPart], { type: 'application/pdf' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName(src.label, t);
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      save(res.pdf, 'application/pdf', fileName(src.label, t));
     } catch (e) {
       setPreviewError((e as Error).message);
     } finally {
       setDownloading(false);
+    }
+  }
+
+  const [exportingOdt, setExportingOdt] = createSignal(false);
+  async function downloadOdt() {
+    const src = source();
+    const t = translation();
+    if (!src || !t) return;
+    setExportingOdt(true);
+    try {
+      // loaded on demand – most people only want the PDF
+      const { generateOdt, MIME } = await import('./odt/generate.ts');
+      save(generateOdt(src.doc), MIME, fileName(src.label, t, 'odt'));
+    } catch (e) {
+      setPreviewError((e as Error).message);
+    } finally {
+      setExportingOdt(false);
     }
   }
 
@@ -468,6 +489,15 @@ export default function App() {
             <div class="actions">
               <button type="button" class="secondary" onClick={share} disabled={!source()} title="Link mit Bibelstelle und allen Einstellungen kopieren">
                 {copied() ? 'Link kopiert ✓' : 'Link teilen'}
+              </button>
+              <button
+                type="button"
+                class="secondary"
+                onClick={downloadOdt}
+                disabled={!source() || exportingOdt()}
+                title="Bearbeitbares Dokument für Word und LibreOffice (.odt). Die Linien der Notizspalte gibt es nur im PDF."
+              >
+                {exportingOdt() ? 'Erzeuge ODT …' : 'ODT (Word)'}
               </button>
               <button type="button" class="primary-btn" onClick={download} disabled={!source() || downloading()}>
                 {downloading() ? 'Erzeuge PDF …' : 'PDF herunterladen'}

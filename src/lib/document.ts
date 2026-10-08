@@ -29,11 +29,11 @@ export function buildDocument(
   return { translation, label: labels.join('; '), sections, settings };
 }
 
-/** File name for the PDF, e.g. "Galater_1_12-17_Luther_1912.pdf". */
-export function fileName(label: string, translation: Translation): string {
+/** File name for the download, e.g. "Galater_1_12-17_Luther_1912.pdf". */
+export function fileName(label: string, translation: Translation, ext = 'pdf'): string {
   const clean = (s: string) =>
     s.replace(/[–—]/g, '-').replace(/[,:;.\s]+/g, '_').replace(/[^\p{L}\p{N}_-]/gu, '').replace(/_+/g, '_').replace(/^_|_$/g, '');
-  return `${clean(label)}_${clean(translation.short)}.pdf`;
+  return `${clean(label)}_${clean(translation.short)}.${ext}`;
 }
 
 const blockChars = (b: Block) => b.c.reduce((n, x) => n + (typeof x === 'string' ? x.length : 't' in x ? x.t.length : 3), 0);

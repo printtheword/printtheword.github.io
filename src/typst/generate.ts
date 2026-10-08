@@ -1,6 +1,7 @@
 import type { SelectedChapter } from '../lib/select.ts';
 import type { LayoutSettings } from '../lib/settings.ts';
-import type { Block, Inline, Translation } from '../lib/types.ts';
+import type { Inline, Translation } from '../lib/types.ts';
+import { chapterHeading, chapterStyleFor, LABELS, reflowVerses, visibleBlocks } from '../lib/content.ts';
 
 export interface Section {
   bookId: string;
@@ -40,11 +41,6 @@ export function pageSize(s: LayoutSettings): [number, number] {
   const [w, h] = s.paper === 'custom' ? [s.customWidth, s.customHeight] : PAPER_MM[s.paper];
   return s.landscape ? [Math.max(w, h), Math.min(w, h)] : [Math.min(w, h), Math.max(w, h)];
 }
-
-const LABELS = {
-  de: { chapter: 'Kapitel', psalm: 'Psalm', notes: 'Anmerkungen', sep: ',' },
-  en: { chapter: 'Chapter', psalm: 'Psalm', notes: 'Notes', sep: ':' },
-};
 
 /** Builds the complete Typst document. */
 export function generateTypst(input: DocumentInput): string {
@@ -181,8 +177,6 @@ function preamble({ settings: s, translation, label }: DocumentInput): string {
 `;
 }
 
-type Para = { kind: Block extends infer B ? (B extends { p: infer K } ? K : never) : never; c: Inline[] };
-
 class SectionWriter {
   private lines: string[] = [];
   private endnotes: string[] = [];
@@ -190,12 +184,14 @@ class SectionWriter {
   private chapter = 0;
   private verse = 0;
   private labels: (typeof LABELS)['de'];
+  private lang: 'de' | 'en';
   private section: Section;
   private s: LayoutSettings;
 
   constructor(section: Section, s: LayoutSettings, lang: 'de' | 'en') {
     this.section = section;
     this.s = s;
+    this.lang = lang;
     this.labels = LABELS[lang];
   }
 
@@ -213,27 +209,12 @@ class SectionWriter {
   private writeChapter(ch: SelectedChapter) {
     const { s, section } = this;
     this.chapter = ch.n;
-    const isPsalm = section.bookId === 'PSA';
-    const markLabel = `${section.bookName} ${ch.n}`;
-    this.lines.push(`#metadata(${str(markLabel)}) <chapmark>`);
+    this.lines.push(`#metadata(${str(`${section.bookName} ${ch.n}`)}) <chapmark>`);
 
-    let style = s.chapterStyle;
-    // books with a single chapter don't need a chapter number
-    const single = section.chapters.length === 1 && section.bookId.match(/^(OBA|PHM|2JN|3JN|JUD)$/);
-    if (single) style = 'none';
-    // a selection starting mid-chapter already names the chapter in its title
-    if (!ch.fromStart && s.showBookTitle) style = 'none';
-    if (style === 'heading') {
-      const t = s.chapterLabel ? `${isPsalm ? this.labels.psalm : this.labels.chapter} ${ch.n}` : `${ch.n}`;
-      this.lines.push(`#chaphead[${esc(t)}]`);
-    }
+    const style = chapterStyleFor(section, ch, s);
+    if (style === 'heading') this.lines.push(`#chaphead[${esc(chapterHeading(section, ch.n, s, this.lang))}]`);
 
-    let blocks = ch.blocks.filter((b) => {
-      // psalm titles (\d) are part of the biblical text and always printed
-      if ('h' in b) return b.h === 'd' || s.showHeadings;
-      return true;
-    });
-    blocks = this.reflow(blocks);
+    const blocks = reflowVerses(visibleBlocks(ch.blocks, s), s);
 
     let pendingCap = style === 'dropcap' || style === 'margin' ? ch.n : undefined;
     for (const b of blocks) {
@@ -255,36 +236,6 @@ class SectionWriter {
       const body = prefix + this.inlines(b.c, suppressFirstVerse);
       this.lines.push(this.paragraph(b.p, body));
     }
-  }
-
-  /** Optionally starts a new paragraph with every verse (poetry lines of one verse are joined). */
-  private reflow(blocks: Block[]): Block[] {
-    if (!this.s.versePerLine) return blocks;
-    const out: Block[] = [];
-    let para: Para | undefined;
-    const flush = () => {
-      if (para && para.c.length) out.push({ p: para.kind, c: para.c });
-      para = undefined;
-    };
-    for (const b of blocks) {
-      if ('h' in b) {
-        flush();
-        out.push(b);
-        continue;
-      }
-      if (b.p === 'b') continue;
-      for (const x of b.c) {
-        if (typeof x === 'object' && 'v' in x) flush();
-        if (!para) para = { kind: 'm', c: [] };
-        const prev = para.c[para.c.length - 1];
-        if (para.c.length && typeof x === 'string' && typeof prev === 'string') para.c[para.c.length - 1] = prev + x;
-        else para.c.push(x);
-      }
-      // poetry lines: keep a space between joined lines
-      if (para) para.c.push(' ');
-    }
-    flush();
-    return out;
   }
 
   private paragraph(kind: string, body: string): string {

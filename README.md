@@ -11,7 +11,7 @@ Eine statische One-Page-Webseite, mit der man Bibeltexte nach eigenen Wünschen 
 - **Absätze**: wie in der Übersetzung oder jeder Vers in neuer Zeile
 - **Farben** sowie eine **Notizspalte** (liniert oder frei)
 - **Vorlagen**: Lesen, Journaling A5, Kompakt 2-spaltig, Großdruck, Auswendiglernen
-- Live-Vorschau und Download als PDF
+- Live-Vorschau und Download als PDF, außerdem Export als bearbeitbares ODT-Dokument für Word/LibreOffice (wird erst beim Klick nachgeladen; Schriften werden nur benannt, nicht eingebettet; die Linien der Notizspalte gibt es nur im PDF)
 - Alle Einstellungen stehen in der URL (`?t=deu1912&ref=Galater+1,12-17&columns=2`): Vor/Zurück im Browser funktioniert, und „Link teilen“ kopiert einen Link mit Bibelstelle und Layout
 - Zuletzt verwendete Bibelstellen erscheinen in der Aufklappliste des Eingabefelds
 
@@ -46,6 +46,8 @@ node scripts/render-cli.ts deu1912 "Römer 8" out.pdf '{"columns":2}'
 | `src/lib/books.ts`, `src/lib/reference.ts` | Buchnamen/Abkürzungen (de/en) und Parser für Stellenangaben |
 | `src/lib/select.ts`, `src/lib/document.ts` | Auswahl der Verse und Aufbau des Dokuments |
 | `src/typst/generate.ts` | erzeugt den Typst-Quelltext aus Text und Einstellungen |
+| `src/lib/content.ts` | gemeinsame Inhaltsregeln für PDF und ODT (Kapitelstil, Vers pro Zeile, Überschriften) |
+| `src/odt/generate.ts` | ODT-Export (OpenDocument-XML + ZIP mit fflate), wird bei Bedarf geladen |
 | `src/typst/worker.ts` | Typst-Compiler/Renderer im Web Worker (SVG-Vorschau, PDF) |
 | `src/App.tsx` | Oberfläche (SolidJS) |
 

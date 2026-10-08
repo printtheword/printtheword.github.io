@@ -95,7 +95,8 @@ export interface Settings {
   headingColor: string;
   wjColor: string;
 
-  notesArea: 'none' | 'lines' | 'blank';
+  /** 'verses': a line under every verse, in the notes column next to it */
+  notesArea: 'none' | 'lines' | 'blank' | 'verses';
   notesWidth: number; // mm
   notesLineSpacing: number; // mm
 
@@ -191,15 +192,6 @@ export const MAX_COLUMNS = 6;
 export type LayoutSettings = Omit<Settings, 'translation' | 'reference'>;
 
 export const PRESETS: { name: string; description: string; settings: Partial<LayoutSettings> }[] = [
-  { name: 'Lesen', description: 'A4, einspaltig, klassisch', settings: {} },
-  {
-    name: 'Journaling A5',
-    description: 'A5 mit linierter Notizspalte',
-    settings: {
-      paper: 'a5', fontSize: 10, marginInner: 15, marginOuter: 12, marginTop: 15, marginBottom: 18,
-      notesArea: 'lines', notesWidth: 42, chapterStyle: 'heading', footnotes: 'none', runningHeader: false,
-    },
-  },
   {
     name: 'Kompakt 2-spaltig',
     description: 'A4, zwei Spalten, kleine Schrift',
@@ -208,6 +200,15 @@ export const PRESETS: { name: string; description: string; settings: Partial<Lay
       columnRule: true, lineSpacing: 0.55, paragraphSpacing: 0.4,
     },
   },
+  {
+    name: 'Kommentar',
+    description: 'A4 quer, ein Vers pro Zeile, Notizlinie unter jedem Vers',
+    settings: {
+      landscape: true, fontSize: 9.5, marginTop: 15, marginBottom: 17, marginInner: 15, marginOuter: 15, columnRule: true,
+      lineSpacing: 0.55, paragraphSpacing: 0.9, versePerLine: true, notesArea: 'verses', notesWidth: 80,
+    },
+  },
+  { name: 'Lesen', description: 'A4, einspaltig, klassisch', settings: {} },
   {
     name: 'Großdruck',
     description: 'Große Schrift, ein Vers pro Zeile',
@@ -227,6 +228,10 @@ export const PRESETS: { name: string; description: string; settings: Partial<Lay
   },
 ];
 
+/** Layout of a first visit (links still encode their settings relative to DEFAULTS). */
+export const START_LAYOUT = PRESETS[0].settings;
+const initial = (): Settings => ({ ...defaults(), ...START_LAYOUT });
+
 const STORAGE_KEY = 'printtheword:settings:v1';
 
 /** allowed values of the string settings that are not free text */
@@ -235,7 +240,7 @@ const CHOICES: Partial<Record<keyof Settings, readonly string[]>> = {
   chapterStyle: ['dropcap', 'margin', 'heading', 'none'],
   verseStyle: ['super', 'inline', 'bold', 'none'],
   footnotes: ['none', 'page', 'end'],
-  notesArea: ['none', 'lines', 'blank'],
+  notesArea: ['none', 'lines', 'blank', 'verses'],
   font: FONTS.map((f) => f.name),
   headingFont: FONTS.map((f) => f.name),
 };
@@ -355,9 +360,9 @@ function loadStored(): Settings {
     // merge so that new settings added later get their defaults
     if (raw) return merge(JSON.parse(raw));
   } catch {
-    /* storage unavailable or corrupt – use defaults */
+    /* storage unavailable or corrupt – use the start layout */
   }
-  return defaults();
+  return initial();
 }
 
 /** Changes within this time are combined into one history entry (e.g. typing a reference). */
@@ -389,7 +394,7 @@ export function createSettings() {
   });
   const onPop = () => {
     lastChange = 0;
-    setSettings(reconcile(settingsFromQuery(location.search) ?? defaults()));
+    setSettings(reconcile(settingsFromQuery(location.search) ?? initial()));
   };
   window.addEventListener('popstate', onPop);
   onCleanup(() => window.removeEventListener('popstate', onPop));

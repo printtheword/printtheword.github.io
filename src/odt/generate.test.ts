@@ -64,6 +64,10 @@ describe('generateOdt', () => {
     expect(content).toContain('style:master-page-name="PTW_book_1"');
     expect(styles).toContain('<style:master-page style:name="PTW_book_1"');
   });
+  it('widens the column gap by the notes area of each column', () => {
+    const content = files(odt('engwebp', 'Ps 23', { columns: 2, columnGap: 7, notesArea: 'verses', notesWidth: 30 }))['content.xml'];
+    expect(content).toContain('fo:column-gap="37mm"');
+  });
   it('starts a new paragraph with every verse', () => {
     const content = files(odt('deu1912', 'Ps 23', { versePerLine: true, verseStyle: 'bold' }))['content.xml'];
     expect(content.match(/<text:p [^>]*><text:span text:style-name="PTW_verse">/g)!.length).toBeGreaterThanOrEqual(5);

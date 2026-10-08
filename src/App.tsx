@@ -4,7 +4,7 @@ import { buildDocument, charsPerPage, fileName, truncateDocument } from './lib/d
 import { bibleserverUrl } from './lib/bibleserver.ts';
 import { BOOK_BY_ID } from './lib/books.ts';
 import { formatRange, parseReference, resolveRanges, type Range } from './lib/reference.ts';
-import { addRecent, createSettings, DEFAULTS, FONTS, loadRecent, PRESETS, saveRecent, type LayoutSettings } from './lib/settings.ts';
+import { addRecent, createSettings, DEFAULTS, FONTS, loadRecent, PRESETS, saveRecent, START_LAYOUT, type LayoutSettings } from './lib/settings.ts';
 import type { BookData } from './lib/types.ts';
 import { compile } from './typst/client.ts';
 import { generateTypst } from './typst/generate.ts';
@@ -485,6 +485,7 @@ export default function App() {
               options={[
                 { value: 'none', label: 'Keine' },
                 { value: 'lines', label: 'Liniert' },
+                { value: 'verses', label: 'Pro Vers' },
                 { value: 'blank', label: 'Frei' },
               ]}
               onChange={set('notesArea')}
@@ -504,11 +505,17 @@ export default function App() {
                   />
                 </Show>
               </div>
+              <p class="help">
+                <Show when={settings.notesArea === 'verses'} fallback="Bei mehreren Spalten hat jede Spalte ihre eigene Notizspalte.">
+                  Eine Linie unter jedem Vers – am besten mit „Jeder Vers in neuer Zeile“. Bei mehreren Spalten hat jede Spalte ihre
+                  eigene Notizspalte.
+                </Show>
+              </p>
             </Show>
           </Section>
 
           <div class="reset">
-            <button type="button" class="link" onClick={() => applyPreset({})}>
+            <button type="button" class="link" onClick={() => applyPreset(START_LAYOUT)}>
               Alle Layout-Einstellungen zurücksetzen
             </button>
           </div>

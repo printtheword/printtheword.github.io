@@ -62,6 +62,18 @@ describe('generateTypst', () => {
     const src = generateTypst(doc('deu1912', 'Eph 1,1-3', { versePerLine: true, chapterStyle: 'none' }));
     expect(src.match(/^#vn\(\d+\);/gm)).toHaveLength(3);
   });
+  it('marks the end of every verse for per-verse notes lines', () => {
+    const settings = { versePerLine: true, chapterStyle: 'none' as const };
+    const src = generateTypst(doc('deu1912', 'Eph 1,1-3', { ...settings, notesArea: 'verses' }));
+    expect(src.match(/\)<vend>\]/g)).toHaveLength(3);
+    expect(src).toContain('Christus!#box[#metadata((k: "0-1-2", n: 2))<vend>]');
+    expect(src).toContain('query(<vend>)');
+    expect(generateTypst(doc('deu1912', 'Eph 1,1-3', { ...settings, notesArea: 'lines' }))).not.toContain('<vend>');
+  });
+  it('gives every column its own notes area', () => {
+    const src = generateTypst(doc('deu1912', 'Eph 1', { columns: 2, columnGap: 7, notesArea: 'blank', notesWidth: 30 }));
+    expect(src).toContain('#set columns(gutter: 37mm)');
+  });
   it('marks words and writes a legend', () => {
     const marks = [{ ...newMark(), terms: 'Gnade' }];
     const d = doc('deu1912', 'Eph 2', { marks });
@@ -103,6 +115,9 @@ describe('typst compilation (wasm)', () => {
     ['engbsb', 'Ps 22-23', { footnotes: 'end', versePerLine: true, chapterStyle: 'heading', chapterLabel: true }],
     ['engwebp', 'John 3; Rom 8:28-39', { wordsOfJesusRed: true, columns: 2, columnRule: true, twoSided: true }],
     ['eng-kjv2006', 'Gen 1', { versePerLine: true, notesArea: 'lines' }],
+    ['deu1912', 'Joh 1', { versePerLine: true, notesArea: 'verses' }],
+    ['deu1912', 'Ps 119', { columns: 2, notesArea: 'verses', notesWidth: 30, twoSided: true, columnRule: true }],
+    ['engbsb', 'Matt 5', { columns: 2, notesArea: 'lines', notesWidth: 30, columnRule: true }],
     ['eng-asv', 'Phlm', { paper: 'custom', customWidth: 120, customHeight: 180, landscape: true }],
     ['deu1912', 'Röm 3', { marks: MARK_LINES.map((l, i) => ({
       ...newMark(i % 2 ? '' : LIGHT_COLORS[i]), terms: ['Glaube*', 'Gesetz*', 'Gott*', 'Sünde*', 'gerecht*', 'Werke*'][i],

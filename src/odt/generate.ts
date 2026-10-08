@@ -8,8 +8,8 @@ import { pageSize, type DocumentInput, type Section } from '../typst/generate.ts
 
 /**
  * Writes the document as OpenDocument text (.odt) for Word and LibreOffice.
- * Loaded on demand. Mirrors the Typst layout as far as ODF styles allow; the lined notes
- * column is left out (its space stays free).
+ * Loaded on demand. Mirrors the Typst layout as far as ODF styles allow; the lines of the notes
+ * columns are left out (their space stays free).
  */
 export function generateOdt(input: DocumentInput): Uint8Array {
   const content = new ContentWriter(input);
@@ -267,7 +267,8 @@ class ContentWriter {
     this.lang = input.translation.lang;
     const cols = columnCount(this.s);
     if (cols > 1) {
-      const gap = num(this.s.columnGap, 7);
+      // every column has its own notes area, as in the PDF
+      const gap = num(this.s.columnGap, 7) + (this.s.notesArea !== 'none' ? num(this.s.notesWidth, 50) : 0);
       const sep = this.s.columnRule
         ? '<style:column-sep style:width="0.4pt" style:color="#aaaaaa" style:height="100%" style:vertical-align="top"/>'
         : '';

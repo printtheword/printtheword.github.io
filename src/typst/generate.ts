@@ -51,7 +51,7 @@ export function generateTypst(input: DocumentInput): string {
   const lang = input.translation.lang;
   const out: string[] = [preamble(input)];
   const rules = compileMarks(s.marks);
-  for (const section of input.sections) out.push(new SectionWriter(section, s, lang, rules).write());
+  for (const [i, section] of input.sections.entries()) out.push(new SectionWriter(section, s, lang, rules, i).write());
   if (s.markLegend) out.push(legend(input, rules));
   return out.join('\n');
 }
@@ -138,33 +138,58 @@ function preamble({ settings: s, translation, label }: DocumentInput): string {
   const headingFont = `(${str(s.headingFont)}, "Libertinus Serif")`;
   const lead = num(s.lineSpacing, 0.65);
 
+  // every column has its own notes area at its outer side, so the gutter holds one
+  const gutter = gap + (cols > 1 ? notes : 0);
   // left margin of odd / even pages (even pages are mirrored in two-sided mode)
   const leftOdd = inner;
   const leftEven = s.twoSided ? outer : inner;
   const textWidth = w - inner - outer;
-  const colWidth = (textWidth - (cols - 1) * gap) / cols;
-  const ruleXs = (left: number) =>
-    Array.from({ length: cols - 1 }, (_, k) => mm(left + (k + 1) * colWidth + k * gap + gap / 2));
+  const colWidth = (textWidth - (cols - 1) * gutter) / cols;
+  const colLeft = (left: number, k: number) => left + k * (colWidth + gutter);
+  // notes right of the columns, except on even pages in two-sided mode
+  const notesRight = (even: boolean) => !(even && s.twoSided);
+  const ruleXs = (left: number, even: boolean) =>
+    Array.from({ length: cols - 1 }, (_, k) => mm(colLeft(left, k) + colWidth + (notesRight(even) ? notes : 0) + gap / 2));
+  const notesXs = (left: number, even: boolean) =>
+    Array.from({ length: cols }, (_, k) => mm(notesRight(even) ? colLeft(left, k) + colWidth + 5 : colLeft(left, k) - notes));
+  const perPage = (odd: string, even: string) => `if calc.odd(here().page()) or not ${s.twoSided} { ${odd} } else { ${even} }`;
 
   const background: string[] = [];
   if (s.columnRule && cols > 1) {
     background.push(`
-  let xs = if calc.odd(here().page()) or not ${s.twoSided} { (${ruleXs(leftOdd).join(', ')},) } else { (${ruleXs(leftEven).join(', ')},) }
+  let xs = ${perPage(`(${ruleXs(leftOdd, false).join(', ')},)`, `(${ruleXs(leftEven, true).join(', ')},)`)}
   // start below a book title spanning all columns
   let titles = query(<booktitle-end>).filter(m => m.location().page() == here().page())
   let y0 = if titles.len() > 0 { titles.first().location().position().y + 1.2em } else { ${mm(top)} }
   for x in xs { place(top + left, dx: x, dy: y0, line(length: ${mm(h - bottom)} - y0, angle: 90deg, stroke: 0.4pt + luma(170))) }`);
   }
+  const len = notes - 5;
+  if (s.notesArea === 'lines' || s.notesArea === 'verses') {
+    background.push(`
+  let nxs = ${perPage(`(${notesXs(leftOdd, false).join(', ')},)`, `(${notesXs(leftEven, true).join(', ')},)`)}`);
+  }
   if (s.notesArea === 'lines') {
     const spacing = Math.max(4, num(s.notesLineSpacing, 8));
     const n = Math.floor((h - top - bottom) / spacing);
-    const len = notes - 5;
-    // notes column sits at the outer edge of the text area
-    const xOdd = w - outer + 5;
-    const xEven = s.twoSided ? num(s.marginOuter, 20) : xOdd;
     background.push(`
-  let nx = if calc.odd(here().page()) or not ${s.twoSided} { ${mm(xOdd)} } else { ${mm(xEven)} }
-  for i in range(1, ${n + 1}) { place(top + left, dx: nx, dy: ${mm(top)} + i * ${mm(spacing)}, line(length: ${mm(len)}, stroke: 0.4pt + luma(190))) }`);
+  for nx in nxs { for i in range(1, ${n + 1}) { place(top + left, dx: nx, dy: ${mm(top)} + i * ${mm(spacing)}, line(length: ${mm(len)}, stroke: 0.4pt + luma(190))) } }`);
+  }
+  if (s.notesArea === 'verses') {
+    const size = num(s.fontSize, 11);
+    // the markers sit on the baseline of the verse's last line; a verse may have several (last wins)
+    background.push(`
+  let x0 = ${perPage(mm(leftOdd), mm(leftEven))}
+  let last = (:)
+  for m in query(<vend>) { last.insert(m.value.k, m) }
+  for m in last.values() {
+    let pos = m.location().position()
+    if m.location().page() == here().page() {
+      let k = calc.max(0, calc.min(${cols - 1}, calc.floor((pos.x - x0) / ${mm(colWidth + gutter)})))
+      let y = pos.y + ${(size * 0.3).toFixed(2)}pt
+      place(top + left, dx: nxs.at(k), dy: y, line(length: ${mm(len)}, stroke: 0.4pt + luma(170)))
+      place(top + left, dx: nxs.at(k), dy: y - ${(size * 0.85).toFixed(2)}pt, box(width: ${mm(len)}, align(right, text(size: ${(size * 0.6).toFixed(2)}pt, fill: luma(150), str(m.value.n)))))
+    }
+  }`);
   }
 
   const header = s.runningHeader
@@ -210,7 +235,7 @@ function preamble({ settings: s, translation, label }: DocumentInput): string {
   footer: ${footer},
   background: ${background.length ? `context {${background.join('\n')}\n}` : 'none'},
 )
-#set columns(gutter: ${mm(gap)})
+#set columns(gutter: ${mm(gutter)})
 #set text(font: ${font}, size: ${num(s.fontSize, 11)}pt, lang: "${translation.lang}", fill: ${color(s.textColor)}, hyphenate: ${s.hyphenate})
 #set par(justify: ${s.justify}, leading: ${lead}em, spacing: ${sp}em, first-line-indent: 0pt)
 #set footnote(numbering: "a")
@@ -264,9 +289,12 @@ class SectionWriter {
   private section: Section;
   private s: LayoutSettings;
   private rules: MarkRules;
+  /** index of the section, part of the verse keys of the notes lines */
+  private index: number;
 
-  constructor(section: Section, s: LayoutSettings, lang: 'de' | 'en', rules: MarkRules) {
+  constructor(section: Section, s: LayoutSettings, lang: 'de' | 'en', rules: MarkRules, index = 0) {
     this.section = section;
+    this.index = index;
     this.s = s;
     this.lang = lang;
     this.rules = rules;
@@ -287,6 +315,7 @@ class SectionWriter {
   private writeChapter(ch: SelectedChapter) {
     const { s, section } = this;
     this.chapter = ch.n;
+    this.verse = 0;
     this.lines.push(`#metadata(${str(`${section.bookName} ${ch.n}`)}) <chapmark>`);
 
     const style = chapterStyleFor(section, ch, s);
@@ -311,7 +340,7 @@ class SectionWriter {
         suppressFirstVerse = style === 'dropcap' && ch.fromStart;
         pendingCap = undefined;
       }
-      const body = prefix + this.inlines(b.c, suppressFirstVerse);
+      const body = prefix + this.inlines(b.c, suppressFirstVerse, true);
       this.lines.push(this.paragraph(b.p, body));
     }
   }
@@ -337,12 +366,15 @@ class SectionWriter {
     }
   }
 
-  private inlines(c: Inline[], suppressFirstVerse: boolean): string {
+  /** In paragraphs (`verseEnds`), marks where each verse ends for the per-verse notes lines. */
+  private inlines(c: Inline[], suppressFirstVerse: boolean, verseEnds = false): string {
+    const marking = verseEnds && this.s.notesArea === 'verses';
     let out = '';
     let first = true;
     for (const x of c) {
       if (typeof x === 'string') out += esc(x);
       else if ('v' in x) {
+        if (marking && out.trim()) out = out.trimEnd() + this.verseEnd();
         this.verse = x.v;
         if (out && !/\s$/.test(out)) out += ' ';
         if (!(first && suppressFirstVerse) && this.s.verseStyle !== 'none') out += `#vn(${x.v});`;
@@ -357,7 +389,14 @@ class SectionWriter {
         out += this.note(x.f);
       }
     }
-    return out.trim();
+    out = out.trim();
+    return marking && out ? out + this.verseEnd() : out;
+  }
+
+  private verseEnd(): string {
+    if (!this.verse) return '';
+    // in a box, otherwise a marker at the end of a paragraph is placed below it
+    return `#box[#metadata((k: "${this.index}-${this.chapter}-${this.verse}", n: ${this.verse}))<vend>]`;
   }
 
   private note(text: string): string {

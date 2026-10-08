@@ -19,6 +19,9 @@ describe('URL query', () => {
     expect(s.verseColor).toBe(DEFAULTS.verseColor);
     expect(s.font).toBe(DEFAULTS.font);
   });
+  it('accepts per-verse notes lines', () => {
+    expect(settingsFromQuery('?notesArea=verses')!.notesArea).toBe('verses');
+  });
   it('round-trips mark rules and drops invalid ones', () => {
     const marks = [{ ...newMark(), terms: 'Glaube, glaub*', label: 'Glaube', bold: true, line: 'wavy' as const, frame: 'oval' as const }];
     const s = { ...DEFAULTS, marks, markLegend: false };

@@ -27,13 +27,15 @@ const SPEC =
 
 /**
  * Parses a reference string such as "Epheser 1", "Gal 1,12-17", "Galater 1,12-1,17",
- * "Römer", "1. Mose 2-3", "John 3:16-18", "Joh 3,16f" or several parts separated by ";".
- * A part without a book name continues the previous book ("Eph 1; 3").
+ * "Römer", "1. Mose 2-3", "John 3:16-18", "Joh 3,16f" or several parts separated by "," or ";"
+ * ("Ps 23, Joh 10,1-18"). A comma only separates parts when a book name follows, since it
+ * also separates chapter and verse. A part without a book name continues the previous book ("Eph 1; 3").
  */
 export function parseReference(input: string): ParsedRange[] {
   const parts = input
     .replace(/[–—]/g, '-')
     .split(';')
+    .flatMap(splitAtBooks)
     .map((p) => p.trim())
     .filter(Boolean);
   if (parts.length === 0) throw new ReferenceError('Bitte eine Bibelstelle eingeben.');
@@ -57,6 +59,17 @@ export function parseReference(input: string): ParsedRange[] {
     for (const s of splitSpec(spec)) result.push({ book, ...parseSpec(s, part) });
   }
   return result;
+}
+
+/** Splits "Ps 23, Joh 10,1-18" at commas followed by a book name; other commas stay. */
+function splitAtBooks(input: string): string[] {
+  const out: string[] = [];
+  for (const piece of input.split(',')) {
+    const m = /^\s*((?:[1-5I]{1,3}\.?\s*)?\p{L}[\p{L}\s.]*?)\.?\s*(\d.*)?$/u.exec(piece);
+    if (out.length === 0 || (m && findBook(m[1]))) out.push(piece);
+    else out[out.length - 1] += `,${piece}`;
+  }
+  return out;
 }
 
 /** Splits "3:16-18, 20" (English) into separate specs; German commas are chapter/verse separators. */

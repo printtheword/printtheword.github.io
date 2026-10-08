@@ -45,6 +45,11 @@ describe('parse + resolve', () => {
   it('dashes and spaces', () => expect(r('Gal 1, 12 – 17')).toEqual(r('Gal 1,12-17')));
   it('multiple parts with continuation', () =>
     expect(r('Eph 1; 3; Gal 2').map((x) => `${x.book}${x.from.c}`)).toEqual(['EPH1', 'EPH3', 'GAL2']));
+  it('comma before a book name separates parts', () => {
+    expect(r('Eph 1, Gal 2,3-5, 1Mo 2').map((x) => `${x.book}${x.from.c}`)).toEqual(['EPH1', 'GAL2', 'GEN2']);
+    expect(r('Röm 8, Joh 1,1f; 3')).toEqual(r('Röm 8; Joh 1,1f; Joh 3'));
+    expect(r('Joh 3,1f, Joh 3,1ff')).toEqual(r('Joh 3,1f; Joh 3,1ff'));
+  });
   it('errors', () => {
     expect(() => r('Galater 7')).toThrow('Galater hat nur 6 Kapitel.');
     expect(() => r('Galater 1,30')).toThrow('nur 24 Verse');

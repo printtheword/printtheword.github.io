@@ -277,7 +277,7 @@ export default function App() {
               </For>
             </div>
             <p class="help">
-              Mehrere Stellen mit „;“ trennen, z. B. <code>Ps 23; Joh 10,1-18</code>. Englische Schreibweise{' '}
+              Mehrere Stellen mit Komma trennen, z. B. <code>Ps 23, Joh 10,1-18</code>. Englische Schreibweise{' '}
               <code>John 3:16</code> geht auch.
             </p>
           </section>

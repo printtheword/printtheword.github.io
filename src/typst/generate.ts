@@ -14,7 +14,7 @@ export interface Section {
 }
 
 export interface DocumentInput {
-  translation: Pick<Translation, 'name' | 'short' | 'lang' | 'license'>;
+  translation: Pick<Translation, 'name' | 'short' | 'lang' | 'license' | 'attribution'>;
   /** combined label of all ranges, used as document title */
   label: string;
   sections: Section[];
@@ -53,6 +53,8 @@ export function generateTypst(input: DocumentInput): string {
   const rules = compileMarks(s.marks);
   for (const [i, section] of input.sections.entries()) out.push(new SectionWriter(section, s, lang, rules, i).write());
   if (s.markLegend) out.push(legend(input, rules));
+  const credit = input.translation.attribution;
+  if (credit) out.push(`#block(above: 2em, text(size: 0.75em, fill: luma(120), [${esc(credit)}]))\n`);
   return out.join('\n');
 }
 

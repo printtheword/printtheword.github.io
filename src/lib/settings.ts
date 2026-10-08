@@ -112,7 +112,7 @@ export interface Settings {
 }
 
 export const DEFAULTS: Settings = {
-  translation: 'deu1912',
+  translation: 'deu1951',
   reference: 'Johannes 1',
 
   paper: 'a4',

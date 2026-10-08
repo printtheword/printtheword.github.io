@@ -50,5 +50,7 @@ export interface Translation {
   year: string;
   license: string;
   source: string;
+  /** credit line printed at the end of the document, for translations whose license requires it */
+  attribution?: string;
   features: { headings: boolean; footnotes: boolean; wordsOfJesus: boolean };
 }

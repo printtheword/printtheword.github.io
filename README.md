@@ -4,7 +4,7 @@ Eine statische One-Page-Webseite, mit der man Bibeltexte nach eigenen Wünschen 
 
 ## Funktionen
 
-- **Übersetzungen** (alle gemeinfrei, Quelle [eBible.org](https://ebible.org)): Lutherbibel 1912, Unrevidierte Elberfelder 1905, Textbibel Kautzsch/Weizsäcker 1906, Berean Standard Bible, World English Bible, King James Version, American Standard Version
+- **Übersetzungen** (Quelle [eBible.org](https://ebible.org)): Schlachter-Bibel 1951 (CC BY 4.0, Standard), Lutherbibel 1912, Unrevidierte Elberfelder 1905, Textbibel Kautzsch/Weizsäcker 1906, Berean Standard Bible, World English Bible, King James Version, American Standard Version
 - **Stellenangaben**: `Epheser 1`, `Galater 1,12-1,17`, `Gal 1,12-17`, `Römer`, `1. Mose 2-3`, `Joh 3,16f`, `Joh 3,16ff`, `Joh 3,16.18`, `John 3:16-18`, mehrere Stellen mit `;` (z. B. `Ps 23; Joh 10,1-18`)
 - **Layout**: Papierformat (A3/A4/A5/A6/Letter/eigenes), Ausrichtung, Ränder, doppelseitig, 1–6 Spalten mit Trennlinie, Schriftart und -größe, Zeilen- und Absatzabstand, Blocksatz, Silbentrennung
 - **Inhalt**: Buchtitel, Kapitelnummern (groß, als Zeile, am Rand, aus), Versnummern (hochgestellt, klein, fett, aus), Zwischenüberschriften, Fußnoten (Seitenende, am Schluss, aus), Worte Jesu farbig, Kopfzeile, Seitenzahlen
@@ -57,6 +57,6 @@ Die Seite liegt unter <https://printtheword.github.io/> (Repository [`printthewo
 
 ## Lizenzen
 
-- Bibeltexte: gemeinfrei (Public Domain), siehe `public/bibles/translations.json`. Die KJV ist im Vereinigten Königreich durch das Crown Patent geschützt. „World English Bible“ ist eine Marke von eBible.org.
+- Bibeltexte: gemeinfrei (Public Domain), außer Schlachter-Bibel 1951 (© 1951 Genfer Bibelgesellschaft, CC BY 4.0); siehe `public/bibles/translations.json`. Die KJV ist im Vereinigten Königreich durch das Crown Patent geschützt. „World English Bible“ ist eine Marke von eBible.org.
 - Schriften (Libertinus Serif, EB Garamond, Source Serif 4, Noto Serif, Noto Sans): SIL Open Font License, siehe `public/fonts/OFL-*.txt`
 - typst.ts: Apache-2.0

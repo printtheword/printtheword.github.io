@@ -17,6 +17,12 @@ type Source = Omit<Translation, 'features'>;
 
 const TRANSLATIONS: Source[] = [
   {
+    id: 'deu1951', name: 'Schlachter-Bibel 1951', short: 'Schlachter 1951', lang: 'de', year: '1951',
+    license: 'Copyright © 1951 Genfer Bibelgesellschaft, Lizenz CC BY 4.0 (creativecommons.org/licenses/by/4.0)',
+    source: 'https://ebible.org/find/details.php?id=deu1951',
+    attribution: 'Schlachter-Bibel 1951, © 1951 Genfer Bibelgesellschaft, CC BY 4.0, Quelle: eBible.org',
+  },
+  {
     id: 'deu1912', name: 'Lutherbibel 1912', short: 'Luther 1912', lang: 'de', year: '1912',
     license: 'Gemeinfrei (Public Domain)', source: 'https://ebible.org/find/details.php?id=deu1912',
   },

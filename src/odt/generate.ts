@@ -15,6 +15,7 @@ export function generateOdt(input: DocumentInput): Uint8Array {
   const content = new ContentWriter(input);
   for (const [i, section] of input.sections.entries()) content.section(section, i);
   if (input.settings.markLegend) content.legend();
+  if (input.translation.attribution) content.credit(input.translation.attribution);
   return zipSync({
     // must be the first entry and stored uncompressed
     mimetype: [strToU8(MIME), { level: 0 }],
@@ -208,6 +209,7 @@ function stylesXml({ settings: s, translation, sections }: DocumentInput): strin
   ${para('PTW_qr', 'Rechtsbündig', '', 'fo:text-align="end"')}
   ${para('PTW_legend', 'Legende', '', 'fo:text-align="start" fo:line-height="150%"')}
   ${para('PTW_legend_page', 'Legende auf eigener Seite', `${hfont} fo:font-size="140%" fo:font-weight="bold" fo:color="${head}"`, `${block(0, 1.2)} fo:break-before="page"`)}
+  ${para('PTW_credit', 'Quellenangabe', 'fo:font-size="75%" fo:color="#787878"', block(2, 0))}
   ${para('PTW_b', 'Leerzeile', 'fo:font-size="50%"', `fo:line-height="${em(lead)}" fo:margin-top="0pt" fo:margin-bottom="0pt"`)}
   ${para('Footnote', 'Footnote', 'fo:font-size="80%" fo:hyphenate="false"', `fo:text-align="start" fo:margin-bottom="${em(0.2)}" fo:margin-left="${em(0.8)}" fo:text-indent="${em(-0.8)}"`, ' style:class="extra"')}
   ${para('Endnote', 'Endnote', 'fo:font-size="85%" fo:hyphenate="false"', `fo:text-align="start" fo:margin-bottom="${em(0.3)}" fo:margin-left="${em(1)}" fo:text-indent="${em(-1)}"`, ' style:class="extra"')}
@@ -418,6 +420,11 @@ class ContentWriter {
     }
     this.para('PTW_s1', title);
     this.para('PTW_legend', items.join('<text:tab/>'));
+  }
+
+  /** Credit line required by the license of the translation. */
+  credit(text: string) {
+    this.para('PTW_credit', xml(text));
   }
 
   xml(): string {

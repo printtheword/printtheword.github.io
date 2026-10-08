@@ -7,6 +7,7 @@ const TRANSLATIONS: Record<string, string> = {
   deu1912: 'LUT',
   deuelo: 'ELB',
   deutkw: 'LUT',
+  deu1951: 'SLT',
   'eng-kjv2006': 'KJV',
   'eng-asv': 'KJV',
   engbsb: 'ESV',

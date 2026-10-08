@@ -612,8 +612,8 @@ export default function App() {
           <a href="https://typst.app" target="_blank" rel="noopener">
             Typst
           </a>{' '}
-          gesetzt. Deine Einstellungen werden nur im localStorage deines Browsers gespeichert. Es werden ausschließlich gemeinfreie
-          Übersetzungen verwendet; Schriften unter der SIL Open Font License.
+          gesetzt. Deine Einstellungen werden nur im localStorage deines Browsers gespeichert. Es werden ausschließlich gemeinfreie oder frei
+          lizenzierte Übersetzungen verwendet; Schriften unter der SIL Open Font License.
         </p>
         <p class="legal">
           <a href="impressum.html">Impressum &amp; Datenschutz</a>

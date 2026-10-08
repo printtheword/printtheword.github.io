@@ -53,6 +53,10 @@ describe('generateTypst', () => {
     const t = translations.find((x) => x.id === 'deu1912')!;
     expect(fileName('Galater 1,12–17', t)).toBe('Galater_1_12-17_Luther_1912.pdf');
   });
+  it('prints the credit line only for translations that need it', () => {
+    expect(generateTypst(doc('deu1951', 'Ps 23'))).toContain('Genfer Bibelgesellschaft, CC BY 4\\.0');
+    expect(generateTypst(doc('deu1912', 'Ps 23'))).not.toContain('CC BY');
+  });
   it('writes endnotes when requested', () => {
     const src = generateTypst(doc('engbsb', 'Matt 1', { footnotes: 'end' }));
     expect(src).toContain('#endnotes([Notes]');

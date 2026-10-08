@@ -53,7 +53,7 @@ node scripts/render-cli.ts deu1912 "Römer 8" out.pdf '{"columns":2}'
 
 ## Deployment
 
-`.github/workflows/deploy.yml` baut die Seite bei jedem Push auf `main` und veröffentlicht sie auf GitHub Pages. Dazu im Repository unter *Settings → Pages* die Quelle „GitHub Actions“ wählen. Der Basispfad wird über `BASE_PATH` gesetzt.
+Die Seite liegt unter <https://printtheword.github.io/> (Repository [`printtheword/printtheword.github.io`](https://github.com/printtheword/printtheword.github.io)). `.github/workflows/deploy.yml` baut sie bei jedem Push auf `main` und veröffentlicht sie auf GitHub Pages; im Repository ist dazu unter *Settings → Pages* die Quelle „GitHub Actions“ gewählt. Der Basispfad wird über `BASE_PATH` gesetzt (hier `/`).
 
 ## Lizenzen
 

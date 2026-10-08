@@ -1,7 +1,9 @@
 import { createEffect, createMemo, createResource, createSignal, For, on, onCleanup, Show } from 'solid-js';
 import { fontUrl, loadBook, loadIndex, loadTranslations } from './lib/bibleData.ts';
 import { buildDocument, charsPerPage, fileName, truncateDocument } from './lib/document.ts';
-import { parseReference, resolveRanges, type Range } from './lib/reference.ts';
+import { bibleserverUrl } from './lib/bibleserver.ts';
+import { BOOK_BY_ID } from './lib/books.ts';
+import { formatRange, parseReference, resolveRanges, type Range } from './lib/reference.ts';
 import { addRecent, createSettings, DEFAULTS, FONTS, loadRecent, PRESETS, saveRecent, type LayoutSettings } from './lib/settings.ts';
 import type { BookData } from './lib/types.ts';
 import { compile } from './typst/client.ts';
@@ -30,6 +32,18 @@ export default function App() {
     } catch (e) {
       return { error: (e as Error).message };
     }
+  });
+
+  const bibleserverLinks = createMemo(() => {
+    const t = translation();
+    const idx = index();
+    const ranges = parsed().ranges;
+    if (!t || !idx || !ranges) return [];
+    return ranges.map((r) => {
+      const verses = idx.books.find((b) => b.id === r.book)!.verses;
+      const name = BOOK_BY_ID.get(r.book)?.[t.lang] ?? r.book;
+      return { url: bibleserverUrl(r, verses, t), label: formatRange(r, name, verses, t.lang === 'de' ? ',' : ':') };
+    });
   });
 
   const bookKey = createMemo(() => {
@@ -232,6 +246,21 @@ export default function App() {
                 invalid={!!parsed().error}
                 onRemoveRecent={(v) => updateRecent(recent().filter((x) => x !== v))}
               />
+              <Show when={bibleserverLinks().length}>
+                <p class="bibleserver">
+                  Auf bibleserver.com lesen:{' '}
+                  <For each={bibleserverLinks()}>
+                    {(l, i) => (
+                      <>
+                        {i() > 0 && '; '}
+                        <a href={l.url} target="_blank" rel="noopener">
+                          {l.label}
+                        </a>
+                      </>
+                    )}
+                  </For>
+                </p>
+              </Show>
             </div>
             <div class="ref-status" aria-live="polite">
               <Show when={parsed().error} fallback={<Show when={source()}>{(s) => <span class="ok">✓ {s().label}</span>}</Show>}>

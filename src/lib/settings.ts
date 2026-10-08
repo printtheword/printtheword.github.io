@@ -5,6 +5,51 @@ export type Paper = 'a3' | 'a4' | 'a5' | 'a6' | 'us-letter' | 'custom';
 export type ChapterStyle = 'dropcap' | 'margin' | 'heading' | 'none';
 export type VerseStyle = 'super' | 'inline' | 'bold' | 'none';
 export type FootnoteMode = 'none' | 'page' | 'end';
+export type MarkLine = 'none' | 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
+export type MarkFrame = 'none' | 'box' | 'rounded' | 'dashed' | 'oval';
+
+/** A rule that marks every occurrence of some words or phrases; the effects can be combined. */
+export interface Mark {
+  /** comma separated words or phrases; `*` at the start or end of a word matches any letters */
+  terms: string;
+  /** text in the legend (the terms if empty) */
+  label: string;
+  /** background colour, '' for none */
+  background: string;
+  /** text colour, '' to keep the normal one */
+  color: string;
+  bold: boolean;
+  italic: boolean;
+  line: MarkLine;
+  lineColor: string;
+  frame: MarkFrame;
+  frameColor: string;
+}
+
+export const MARK_LINES: { value: MarkLine; label: string }[] = [
+  { value: 'none', label: 'Keine' },
+  { value: 'solid', label: 'Unterstrichen' },
+  { value: 'double', label: 'Doppelt' },
+  { value: 'dotted', label: 'Gepunktet' },
+  { value: 'dashed', label: 'Gestrichelt' },
+  { value: 'wavy', label: 'Wellenlinie' },
+];
+export const MARK_FRAMES: { value: MarkFrame; label: string }[] = [
+  { value: 'none', label: 'Kein' },
+  { value: 'box', label: 'Eckig' },
+  { value: 'rounded', label: 'Abgerundet' },
+  { value: 'oval', label: 'Oval' },
+  { value: 'dashed', label: 'Gestrichelt' },
+];
+/** suggested light colours (background) and strong colours (text, lines, frames) */
+export const LIGHT_COLORS = ['#fff176', '#c5e1a5', '#b3e5fc', '#f8bbd0', '#ffcc80', '#e1bee7', '#e0e0e0'];
+export const STRONG_COLORS = ['#c62828', '#1565c0', '#2e7d32', '#ef6c00', '#6a1b9a', '#00838f', '#000000'];
+
+export const newMark = (background = LIGHT_COLORS[0]): Mark => ({
+  terms: '', label: '', background, color: '', bold: false, italic: false,
+  line: 'none', lineColor: STRONG_COLORS[0], frame: 'none', frameColor: STRONG_COLORS[1],
+});
+export const MAX_MARKS = 12;
 
 export interface Settings {
   translation: string;
@@ -53,6 +98,13 @@ export interface Settings {
   notesArea: 'none' | 'lines' | 'blank';
   notesWidth: number; // mm
   notesLineSpacing: number; // mm
+
+  marks: Mark[];
+  markLegend: boolean;
+  /** number of occurrences in the legend */
+  markCounts: boolean;
+  /** legend on a page of its own, one rule per line */
+  markLegendPage: boolean;
 }
 
 export const DEFAULTS: Settings = {
@@ -101,7 +153,15 @@ export const DEFAULTS: Settings = {
   notesArea: 'none',
   notesWidth: 50,
   notesLineSpacing: 8,
+
+  marks: [],
+  markLegend: true,
+  markCounts: true,
+  markLegendPage: false,
 };
+
+/** A fresh copy of the defaults (the store changes nested arrays in place). */
+const defaults = (): Settings => ({ ...DEFAULTS, marks: [] });
 
 export const FONTS: { name: string; files: string[]; note?: string }[] = [
   {
@@ -184,8 +244,58 @@ const CHOICES: Partial<Record<keyof Settings, readonly string[]>> = {
 const PARAM: Partial<Record<keyof Settings, string>> = { translation: 't', reference: 'ref' };
 const paramName = (key: keyof Settings) => PARAM[key] ?? key;
 
+const isColor = (v: unknown): v is string => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v);
+
+const pick = <T extends string>(v: unknown, options: { value: T }[], fallback: T): T =>
+  options.some((o) => o.value === v) ? (v as T) : fallback;
+const optColor = (v: unknown) => (isColor(v) ? v : '');
+
+/** Converts a rule of the first version (a single style and colour). */
+function upgradeMark(m: Record<string, unknown>): Record<string, unknown> {
+  if (typeof m.style !== 'string' || !isColor(m.color)) return m;
+  const c = m.color;
+  const line = { underline: 'solid', double: 'double', dotted: 'dotted', wavy: 'wavy' }[m.style];
+  return {
+    terms: m.terms, label: m.label,
+    background: m.style === 'highlight' ? c : '',
+    color: ['color', 'bold', 'italic'].includes(m.style) ? c : '',
+    bold: m.style === 'bold', italic: m.style === 'italic',
+    line: line ?? 'none', lineColor: line ? c : undefined,
+  };
+}
+
+/** Validates mark rules from storage (array) or a link (JSON string). */
+function coerceMarks(value: unknown): Mark[] | undefined {
+  if (typeof value === 'string') {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return undefined;
+    }
+  }
+  if (!Array.isArray(value)) return undefined;
+  const def = newMark('');
+  return value
+    .filter((m): m is Record<string, unknown> => !!m && typeof m === 'object' && typeof m.terms === 'string')
+    .slice(0, MAX_MARKS)
+    .map(upgradeMark)
+    .map((m) => ({
+      terms: m.terms as string,
+      label: typeof m.label === 'string' ? m.label : '',
+      background: optColor(m.background),
+      color: optColor(m.color),
+      bold: m.bold === true,
+      italic: m.italic === true,
+      line: pick(m.line, MARK_LINES, 'none'),
+      lineColor: isColor(m.lineColor) ? m.lineColor : def.lineColor,
+      frame: pick(m.frame, MARK_FRAMES, 'none'),
+      frameColor: isColor(m.frameColor) ? m.frameColor : def.frameColor,
+    }));
+}
+
 /** Checks and converts a stored or shared value; returns undefined if it is not valid. */
 function coerce<K extends keyof Settings>(key: K, value: unknown): Settings[K] | undefined {
+  if (key === 'marks') return coerceMarks(value) as Settings[K] | undefined;
   const def = DEFAULTS[key];
   if (typeof def === 'number') {
     const n = typeof value === 'string' ? Number(value) : value;
@@ -198,17 +308,17 @@ function coerce<K extends keyof Settings>(key: K, value: unknown): Settings[K] |
     return undefined;
   }
   if (typeof value !== 'string') return undefined;
-  if (key.endsWith('Color')) return /^#[0-9a-f]{6}$/i.test(value) ? (value as Settings[K]) : undefined;
+  if (key.endsWith('Color')) return isColor(value) ? (value as Settings[K]) : undefined;
   const choices = CHOICES[key];
   if (choices && !choices.includes(value)) return undefined;
   return value as Settings[K];
 }
 
 function merge(values: Record<string, unknown>): Settings {
-  const merged = { ...DEFAULTS };
+  const merged = defaults();
   for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
     const v = coerce(key, values[key]);
-    if (v !== undefined) (merged as Record<string, unknown>)[key] = v;
+    if (v !== undefined) (merged as unknown as Record<string, unknown>)[key] = v;
   }
   return merged;
 }
@@ -218,6 +328,10 @@ export function settingsToQuery(s: Settings): string {
   const params = new URLSearchParams();
   for (const key of Object.keys(DEFAULTS) as (keyof Settings)[]) {
     const v = s[key];
+    if (Array.isArray(v)) {
+      if (v.length) params.set(paramName(key), JSON.stringify(v));
+      continue;
+    }
     if (v === DEFAULTS[key] && key !== 'translation' && key !== 'reference') continue;
     params.set(paramName(key), typeof v === 'boolean' ? (v ? '1' : '0') : String(v));
   }
@@ -243,7 +357,7 @@ function loadStored(): Settings {
   } catch {
     /* storage unavailable or corrupt – use defaults */
   }
-  return { ...DEFAULTS };
+  return defaults();
 }
 
 /** Changes within this time are combined into one history entry (e.g. typing a reference). */
@@ -275,14 +389,15 @@ export function createSettings() {
   });
   const onPop = () => {
     lastChange = 0;
-    setSettings(reconcile(settingsFromQuery(location.search) ?? { ...DEFAULTS }));
+    setSettings(reconcile(settingsFromQuery(location.search) ?? defaults()));
   };
   window.addEventListener('popstate', onPop);
   onCleanup(() => window.removeEventListener('popstate', onPop));
 
+  // presets change the layout only – the text and the marks stay
   const applyPreset = (preset: Partial<LayoutSettings>) => {
-    const { translation, reference } = unwrap(settings);
-    setSettings(reconcile({ ...DEFAULTS, ...preset, translation, reference }));
+    const { translation, reference, marks, markLegend, markCounts, markLegendPage } = unwrap(settings);
+    setSettings(reconcile({ ...defaults(), ...preset, translation, reference, marks, markLegend, markCounts, markLegendPage }));
   };
   return { settings, setSettings, applyPreset };
 }

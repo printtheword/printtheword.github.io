@@ -4,7 +4,9 @@ export type Inline =
   /** verse marker – the following inlines belong to this verse */
   | { v: number }
   /** styled text: wj = words of Jesus, nd = divine name (small caps), add = added words (italic) */
-  | { s: 'wj' | 'nd' | 'add' | 'it' | 'bd'; t: string }
+  | { s: 'wj' | 'nd' | 'add' | 'it' | 'bd'; t: string; m?: number }
+  /** text matched by the user's mark rule number `m` */
+  | { m: number; t: string }
   /** footnote */
   | { f: string };
 

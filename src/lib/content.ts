@@ -6,8 +6,8 @@ import type { Section } from '../typst/generate.ts';
 /** Content decisions shared by the PDF (Typst) and ODT generators. */
 
 export const LABELS = {
-  de: { chapter: 'Kapitel', psalm: 'Psalm', notes: 'Anmerkungen', sep: ',' },
-  en: { chapter: 'Chapter', psalm: 'Psalm', notes: 'Notes', sep: ':' },
+  de: { chapter: 'Kapitel', psalm: 'Psalm', notes: 'Anmerkungen', legend: 'Legende', sep: ',' },
+  en: { chapter: 'Chapter', psalm: 'Psalm', notes: 'Notes', legend: 'Legend', sep: ':' },
 };
 
 /** Chapter number style for one chapter of a section. */

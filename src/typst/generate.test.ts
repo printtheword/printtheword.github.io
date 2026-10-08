@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { buildDocument, fileName, truncateDocument } from '../lib/document.ts';
 import { parseReference, resolveRanges } from '../lib/reference.ts';
 import { selectRange } from '../lib/select.ts';
-import { DEFAULTS, PRESETS, type LayoutSettings } from '../lib/settings.ts';
+import { DEFAULTS, LIGHT_COLORS, MARK_FRAMES, MARK_LINES, newMark, PRESETS, type LayoutSettings } from '../lib/settings.ts';
 import type { BookData, Translation, TranslationIndex } from '../lib/types.ts';
 import { esc, generateTypst } from './generate.ts';
 
@@ -62,6 +62,20 @@ describe('generateTypst', () => {
     const src = generateTypst(doc('deu1912', 'Eph 1,1-3', { versePerLine: true, chapterStyle: 'none' }));
     expect(src.match(/^#vn\(\d+\);/gm)).toHaveLength(3);
   });
+  it('marks words and writes a legend', () => {
+    const marks = [{ ...newMark(), terms: 'Gnade' }];
+    const d = doc('deu1912', 'Eph 2', { marks });
+    expect(d.markCounts).toEqual([3]);
+    const src = generateTypst(d);
+    expect(src).toContain('#mk0[Gnade];');
+    expect(src).toContain('#box[#mk0[Gnade] #text(size: 0.85em, fill: luma(110))[(3×)]]');
+    // the shortened preview keeps the count of the whole document
+    expect(generateTypst(truncateDocument(d, 500).doc)).toContain('[(3×)]');
+    expect(generateTypst(doc('deu1912', 'Eph 2', { marks, markCounts: false }))).not.toContain('(3×)');
+    expect(src).not.toContain('#pagebreak(weak: true)\n#block(below');
+    expect(generateTypst(doc('deu1912', 'Eph 2', { marks, markLegendPage: true }))).toMatch(/#pagebreak\(weak: true\)\n#block\(below: 1\.2em[^\n]*\[Legende\]/);
+    expect(generateTypst(doc('deu1912', 'Eph 2', { marks, markLegend: false }))).not.toContain('Legende');
+  });
   it('truncates long documents for the preview', () => {
     const d = doc('deu1912', 'Psalmen');
     const { doc: short, truncated } = truncateDocument(d, 5000);
@@ -90,6 +104,11 @@ describe('typst compilation (wasm)', () => {
     ['engwebp', 'John 3; Rom 8:28-39', { wordsOfJesusRed: true, columns: 2, columnRule: true, twoSided: true }],
     ['eng-kjv2006', 'Gen 1', { versePerLine: true, notesArea: 'lines' }],
     ['eng-asv', 'Phlm', { paper: 'custom', customWidth: 120, customHeight: 180, landscape: true }],
+    ['deu1912', 'Röm 3', { marks: MARK_LINES.map((l, i) => ({
+      ...newMark(i % 2 ? '' : LIGHT_COLORS[i]), terms: ['Glaube*', 'Gesetz*', 'Gott*', 'Sünde*', 'gerecht*', 'Werke*'][i],
+      line: l.value, frame: MARK_FRAMES[i % MARK_FRAMES.length].value, bold: i === 1, italic: i === 2, color: i === 3 ? '#1565c0' : '',
+    })) }],
+    ['engwebp', 'John 8', { wordsOfJesusRed: true, columns: 3, markLegendPage: true, marks: [{ ...newMark(), terms: 'truth' }, { ...newMark(), terms: 'light, I am', line: 'wavy', frame: 'oval' }] }],
     ...PRESETS.map((p): [string, string, Partial<LayoutSettings>] => ['deutkw', 'Röm 1', p.settings]),
   ];
   it.each(cases)('%s %s %j', async (id, ref, settings) => {

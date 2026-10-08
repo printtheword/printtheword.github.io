@@ -8,6 +8,7 @@ import { compile } from './typst/client.ts';
 import { generateTypst } from './typst/generate.ts';
 import { ColorInput, Field, NumberInput, Section, Segmented, Select, Toggle } from './components/Fields.tsx';
 import { Logo } from './components/Logo.tsx';
+import { Marks } from './components/Marks.tsx';
 import { ReferenceInput } from './components/ReferenceInput.tsx';
 
 const EXAMPLES = ['Epheser 1', 'Galater 1,12-17', 'Römer', '1. Mose 2-3', 'Psalm 23', 'Matthäus 5-7', 'Joh 3,16'];
@@ -46,7 +47,8 @@ export default function App() {
 
   const layout = createMemo((): LayoutSettings => {
     const { translation: _t, reference: _r, ...rest } = settings;
-    return { ...rest };
+    // copy the rules, so that editing one of them updates the document
+    return { ...rest, marks: settings.marks.map((m) => ({ ...m })) };
   });
 
   const source = createMemo(() => {
@@ -62,6 +64,11 @@ export default function App() {
     const short = truncateDocument(doc, charsPerPage(settings) * PREVIEW_PAGES);
     const preview = short.truncated ? generateTypst(short.doc) : typst;
     return { doc, typst, preview, truncated: short.truncated, label: doc.label };
+  });
+
+  const markCounts = createMemo(() => {
+    const src = source();
+    return src?.doc.markCounts ?? [];
   });
 
   const fonts = createMemo(() => {
@@ -189,7 +196,10 @@ export default function App() {
     <div class="app">
       <header class="masthead">
         <div class="brand">
-          <Logo />
+          {/* the start page of the app – not "/", which is outside the app on GitHub Pages */}
+          <a href={import.meta.env.BASE_URL} class="home" title="Zur Startseite" aria-label="Zur Startseite">
+            <Logo />
+          </a>
           <div>
             <h1>Print the word</h1>
             <p>Die Bibel nach deinen Vorgaben ausdrucken</p>
@@ -405,6 +415,10 @@ export default function App() {
             />
             <Toggle label="Kopfzeile mit Buch und Kapitel" checked={settings.runningHeader} onChange={set('runningHeader')} />
             <Toggle label="Seitenzahlen" checked={settings.pageNumbers} onChange={set('pageNumbers')} />
+          </Section>
+
+          <Section title="Markierungen">
+            <Marks settings={settings} setSettings={setSettings} counts={markCounts()} />
           </Section>
 
           <Section title="Farben">

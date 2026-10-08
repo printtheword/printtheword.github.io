@@ -6,7 +6,7 @@ import { strFromU8, unzipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { buildDocument } from '../lib/document.ts';
 import { parseReference, resolveRanges } from '../lib/reference.ts';
-import { DEFAULTS, PRESETS, type LayoutSettings } from '../lib/settings.ts';
+import { DEFAULTS, newMark, PRESETS, type LayoutSettings } from '../lib/settings.ts';
 import type { BookData, Translation, TranslationIndex } from '../lib/types.ts';
 import { generateOdt, MIME, xml } from './generate.ts';
 
@@ -84,5 +84,19 @@ describe('generateOdt', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+  it('writes mark styles, spans and a legend', () => {
+    const marks = [{ ...newMark(), terms: 'Gnade', label: 'Gnade Gottes', bold: true, line: 'wavy' as const, frame: 'dashed' as const }];
+    const f = files(odt('deu1912', 'Eph 2', { marks }));
+    expect(f['styles.xml']).toContain('style:name="PTW_mk0" style:display-name="Markierung 1"');
+    expect(f['styles.xml']).toContain('style:text-underline-style="wave"');
+    expect(f['content.xml']).toContain('<text:span text:style-name="PTW_mk0">Gnade</text:span>');
+    expect(f['styles.xml']).toContain('fo:background-color="#fff176" fo:font-weight="bold"');
+    expect(f['styles.xml']).toContain('fo:border="0.6pt dashed #1565c0"');
+    expect(f['content.xml']).toContain('>Legende</text:p>');
+    expect(f['content.xml']).toContain('Gnade Gottes</text:span> <text:span text:style-name="PTW_count">(3×)</text:span>');
+    const page = files(odt('deu1912', 'Eph 2', { marks, markLegendPage: true }));
+    expect(page['styles.xml']).toMatch(/style:name="PTW_legend_page"[^]*?fo:break-before="page"/);
+    expect(page['content.xml']).toContain('<text:p text:style-name="PTW_legend_page">Legende</text:p>');
   });
 });

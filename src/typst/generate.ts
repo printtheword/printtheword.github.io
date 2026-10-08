@@ -1,7 +1,8 @@
 import type { SelectedChapter } from '../lib/select.ts';
-import { MAX_COLUMNS, type LayoutSettings } from '../lib/settings.ts';
+import { MAX_COLUMNS, type LayoutSettings, type Mark } from '../lib/settings.ts';
 import type { Inline, Translation } from '../lib/types.ts';
 import { chapterHeading, chapterStyleFor, LABELS, reflowVerses, visibleBlocks } from '../lib/content.ts';
+import { compileMarks, markBlocks, markLabel, type MarkRules } from '../lib/marks.ts';
 
 export interface Section {
   bookId: string;
@@ -18,6 +19,8 @@ export interface DocumentInput {
   label: string;
   sections: Section[];
   settings: LayoutSettings;
+  /** occurrences of every mark rule in the complete document (also when the text is shortened) */
+  markCounts: number[];
 }
 
 const PAPER_MM: Record<string, [number, number]> = {
@@ -47,8 +50,76 @@ export function generateTypst(input: DocumentInput): string {
   const s = input.settings;
   const lang = input.translation.lang;
   const out: string[] = [preamble(input)];
-  for (const section of input.sections) out.push(new SectionWriter(section, s, lang).write());
+  const rules = compileMarks(s.marks);
+  for (const section of input.sections) out.push(new SectionWriter(section, s, lang, rules).write());
+  if (s.markLegend) out.push(legend(input, rules));
   return out.join('\n');
+}
+
+/** Typst function that applies the effects of a mark rule to its body. */
+function markFunction(m: Mark): string {
+  let body = 'body';
+  const text = [
+    ...(m.color ? [`fill: ${color(m.color)}`] : []),
+    ...(m.bold ? ['weight: "bold"'] : []),
+    ...(m.italic ? ['style: "italic"'] : []),
+  ];
+  if (text.length) body = `text(${text.join(', ')}, ${body})`;
+  if (m.background || m.frame !== 'none') {
+    const fc = color(m.frameColor);
+    const stroke = { none: 'none', box: `0.6pt + ${fc}`, rounded: `0.6pt + ${fc}`, oval: `0.6pt + ${fc}`, dashed: `(paint: ${fc}, thickness: 0.6pt, dash: "dashed")` }[m.frame];
+    const radius = { none: '0pt', box: '0pt', dashed: '0pt', rounded: '2.5pt', oval: '0.6em' }[m.frame];
+    // highlight (unlike box) breaks across lines; leave room for a line below the text
+    const bottom = m.line !== 'none' ? ', bottom-edge: -0.5em' : '';
+    const extent = m.frame === 'none' ? '0.5pt' : '1pt';
+    body = `highlight(fill: ${m.background ? color(m.background) : 'none'}, stroke: ${stroke}, radius: ${radius}, extent: ${extent}${bottom}, ${body})`;
+    // the frame reaches beyond the text – keep it off the neighbouring words
+    if (m.frame !== 'none') body = `h(1.5pt) + ${body} + h(1.5pt)`;
+  }
+  // the line goes outside, otherwise the background would cover it
+  const lc = color(m.lineColor);
+  switch (m.line) {
+    case 'solid':
+      return `underline(stroke: 0.7pt + ${lc}, offset: 2pt, ${body})`;
+    case 'double':
+      return `underline(stroke: 0.5pt + ${lc}, offset: 1.6pt, underline(stroke: 0.5pt + ${lc}, offset: 3pt, ${body}))`;
+    case 'dotted':
+      return `underline(stroke: (paint: ${lc}, thickness: 0.9pt, dash: "dotted"), offset: 2pt, ${body})`;
+    case 'dashed':
+      return `underline(stroke: (paint: ${lc}, thickness: 0.7pt, dash: "dashed"), offset: 2pt, ${body})`;
+    case 'wavy':
+      // a thick underline painted with a wave pattern – unlike a drawn curve it breaks across lines
+      return `underline(stroke: (paint: wave(${lc}), thickness: 2.4pt), offset: 2.4pt, evade: false, ${body})`;
+    case 'none':
+      return body;
+  }
+}
+
+/** Legend of the mark rules at the end of the document. */
+function legend({ settings: s, markCounts, translation }: DocumentInput, rules: MarkRules): string {
+  const items = s.marks.flatMap((m, i) => {
+    if (!rules[i]) return [];
+    const count = s.markCounts ? ` #text(size: 0.85em, fill: luma(110))[(${markCounts[i] ?? 0}×)]` : '';
+    return [`#box[#mk${i}[${esc(markLabel(m))}]${count}]`];
+  });
+  if (!items.length) return '';
+  const title = LABELS[translation.lang].legend;
+  if (s.markLegendPage) {
+    return `#pagebreak(weak: true)
+#block(below: 1.2em, text(font: hfont, size: 1.4em, weight: "bold", fill: ${color(s.headingColor)}, [${title}]))
+#block[
+  #set par(justify: false, leading: 1em)
+  ${items.join(' #linebreak()\n  ')}
+]
+`;
+  }
+  return `#block(above: 1.6em, breakable: false)[
+  #text(font: hfont, weight: "bold", [${title}])
+  #parbreak()
+  #set par(justify: false)
+  ${items.join(' #h(1.4em) ')}
+]
+`;
 }
 
 function preamble({ settings: s, translation, label }: DocumentInput): string {
@@ -147,6 +218,11 @@ function preamble({ settings: s, translation, label }: DocumentInput): string {
 #show footnote.entry: set text(size: 0.8em)
 #show footnote.entry: set par(justify: false)
 
+#let hfont = ${headingFont}
+#let wave(c) = tiling(size: (5pt, 2.4pt), curve(stroke: 0.7pt + c,
+  curve.move((0pt, 1.2pt)), curve.cubic((1.25pt, -0.4pt), (1.25pt, -0.4pt), (2.5pt, 1.2pt)),
+  curve.cubic((3.75pt, 2.8pt), (3.75pt, 2.8pt), (5pt, 1.2pt))))
+${s.marks.map((m, i) => `#let mk${i}(body) = ${markFunction(m)}`).join('\n')}
 #let vn(n) = ${verse}
 #let wj(body) = ${s.wordsOfJesusRed ? `text(fill: ${color(s.wjColor)}, body)` : 'body'}
 #let nd(body) = smallcaps(body)
@@ -187,11 +263,13 @@ class SectionWriter {
   private lang: 'de' | 'en';
   private section: Section;
   private s: LayoutSettings;
+  private rules: MarkRules;
 
-  constructor(section: Section, s: LayoutSettings, lang: 'de' | 'en') {
+  constructor(section: Section, s: LayoutSettings, lang: 'de' | 'en', rules: MarkRules) {
     this.section = section;
     this.s = s;
     this.lang = lang;
+    this.rules = rules;
     this.labels = LABELS[lang];
   }
 
@@ -214,7 +292,7 @@ class SectionWriter {
     const style = chapterStyleFor(section, ch, s);
     if (style === 'heading') this.lines.push(`#chaphead[${esc(chapterHeading(section, ch.n, s, this.lang))}]`);
 
-    const blocks = reflowVerses(visibleBlocks(ch.blocks, s), s);
+    const blocks = markBlocks(reflowVerses(visibleBlocks(ch.blocks, s), s), this.rules);
 
     let pendingCap = style === 'dropcap' || style === 'margin' ? ch.n : undefined;
     for (const b of blocks) {
@@ -271,7 +349,10 @@ class SectionWriter {
         first = false;
       } else if ('s' in x) {
         const t = esc(x.t);
-        out += x.s === 'bd' ? `#strong[${t}];` : x.s === 'it' ? `#emph[${t}];` : `#${x.s}[${t}];`;
+        const styled = x.s === 'bd' ? `#strong[${t}]` : x.s === 'it' ? `#emph[${t}]` : `#${x.s}[${t}]`;
+        out += x.m === undefined ? `${styled};` : `#mk${x.m}[${styled}];`;
+      } else if ('m' in x) {
+        out += `#mk${x.m}[${esc(x.t)}];`;
       } else if ('f' in x) {
         out += this.note(x.f);
       }

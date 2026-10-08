@@ -1,7 +1,8 @@
 import { strToU8, zipSync } from 'fflate';
 import { chapterHeading, chapterStyleFor, LABELS, reflowVerses, visibleBlocks } from '../lib/content.ts';
 import type { SelectedChapter } from '../lib/select.ts';
-import { MAX_COLUMNS, type LayoutSettings } from '../lib/settings.ts';
+import { compileMarks, markBlocks, markLabel, type MarkRules } from '../lib/marks.ts';
+import { MAX_COLUMNS, type LayoutSettings, type Mark } from '../lib/settings.ts';
 import type { HeadingKind, Inline } from '../lib/types.ts';
 import { pageSize, type DocumentInput, type Section } from '../typst/generate.ts';
 
@@ -13,6 +14,7 @@ import { pageSize, type DocumentInput, type Section } from '../typst/generate.ts
 export function generateOdt(input: DocumentInput): Uint8Array {
   const content = new ContentWriter(input);
   for (const [i, section] of input.sections.entries()) content.section(section, i);
+  if (input.settings.markLegend) content.legend();
   return zipSync({
     // must be the first entry and stored uncompressed
     mimetype: [strToU8(MIME), { level: 0 }],
@@ -68,6 +70,28 @@ function metaXml({ label, translation }: DocumentInput): string {
  <dc:language>${translation.lang}</dc:language>
 </office:meta></office:document-meta>
 `;
+}
+
+/** Text properties of a mark rule. */
+function markText(m: Mark): string {
+  const props: string[] = [];
+  if (m.background) props.push(`fo:background-color="${color(m.background)}"`);
+  if (m.color) props.push(`fo:color="${color(m.color)}"`);
+  if (m.bold) props.push('fo:font-weight="bold"');
+  if (m.italic) props.push('fo:font-style="italic"');
+  if (m.line !== 'none') {
+    const style = { solid: 'solid', double: 'solid', dotted: 'dotted', dashed: 'dash', wavy: 'wave' }[m.line];
+    // LibreOffice draws an "auto" wave hardly visible
+    props.push(
+      `style:text-underline-style="${style}" style:text-underline-width="${m.line === 'wavy' ? 'bold' : 'auto'}" style:text-underline-color="${color(m.lineColor)}"`,
+    );
+    if (m.line === 'double') props.push('style:text-underline-type="double"');
+  }
+  // character borders can't be rounded – rounded and oval frames become plain ones
+  if (m.frame !== 'none') {
+    props.push(`fo:border="0.6pt ${m.frame === 'dashed' ? 'dashed' : 'solid'} ${color(m.frameColor)}" fo:padding="0.3mm"`);
+  }
+  return props.join(' ');
 }
 
 const columnCount = (s: LayoutSettings) => Math.max(1, Math.min(MAX_COLUMNS, Math.round(num(s.columns, 1))));
@@ -180,6 +204,8 @@ function stylesXml({ settings: s, translation, sections }: DocumentInput): strin
   ${para('PTW_pi', 'Eingerückt', '', `fo:margin-left="${em(1.2)}"`)}
   ${para('PTW_pc', 'Zentriert', '', 'fo:text-align="center"')}
   ${para('PTW_qr', 'Rechtsbündig', '', 'fo:text-align="end"')}
+  ${para('PTW_legend', 'Legende', '', 'fo:text-align="start" fo:line-height="150%"')}
+  ${para('PTW_legend_page', 'Legende auf eigener Seite', `${hfont} fo:font-size="140%" fo:font-weight="bold" fo:color="${head}"`, `${block(0, 1.2)} fo:break-before="page"`)}
   ${para('PTW_b', 'Leerzeile', 'fo:font-size="50%"', `fo:line-height="${em(lead)}" fo:margin-top="0pt" fo:margin-bottom="0pt"`)}
   ${para('Footnote', 'Footnote', 'fo:font-size="80%" fo:hyphenate="false"', `fo:text-align="start" fo:margin-bottom="${em(0.2)}" fo:margin-left="${em(0.8)}" fo:text-indent="${em(-0.8)}"`, ' style:class="extra"')}
   ${para('Endnote', 'Endnote', 'fo:font-size="85%" fo:hyphenate="false"', `fo:text-align="start" fo:margin-bottom="${em(0.3)}" fo:margin-left="${em(1)}" fo:text-indent="${em(-1)}"`, ' style:class="extra"')}
@@ -194,6 +220,8 @@ function stylesXml({ settings: s, translation, sections }: DocumentInput): strin
   ${span('PTW_add', 'Ergänzung', 'fo:font-style="italic"')}
   ${span('PTW_it', 'Kursiv', 'fo:font-style="italic"')}
   ${span('PTW_bd', 'Fett', 'fo:font-weight="bold"')}
+  ${span('PTW_count', 'Anzahl', 'fo:font-size="85%" fo:color="#6e6e6e"')}
+  ${s.marks.map((m, i) => span(`PTW_mk${i}`, `Markierung ${i + 1}`, markText(m))).join('\n  ')}
   ${noteMarks.map(([name, display]) => span(name, display, `style:text-position="super 58%" fo:color="${verse}"`)).join('\n  ')}
   <text:notes-configuration text:note-class="footnote" style:num-format="a" text:start-value="0" text:footnotes-position="page" text:start-numbering-at="document"
    text:default-style-name="Footnote" text:citation-style-name="Footnote_20_Symbol" text:citation-body-style-name="Footnote_20_anchor"/>
@@ -230,10 +258,12 @@ class ContentWriter {
   private master?: string;
   private chapter = 0;
   private verse = 0;
+  private rules: MarkRules;
 
   constructor(input: DocumentInput) {
     this.input = input;
     this.s = input.settings;
+    this.rules = compileMarks(this.s.marks);
     this.lang = input.translation.lang;
     const cols = columnCount(this.s);
     if (cols > 1) {
@@ -297,7 +327,7 @@ class ContentWriter {
     if (style === 'heading') this.para('Heading_20_2', xml(chapterHeading(section, ch.n, s, this.lang)), { heading: 2 });
 
     let pendingCap = style === 'dropcap' || style === 'margin' ? ch.n : undefined;
-    for (const b of reflowVerses(visibleBlocks(ch.blocks, s), s)) {
+    for (const b of markBlocks(reflowVerses(visibleBlocks(ch.blocks, s), s), this.rules)) {
       if ('h' in b) {
         this.para(HEADING_STYLE[b.h], this.inlines(b.c, false));
         continue;
@@ -335,7 +365,10 @@ class ContentWriter {
         }
         first = false;
       } else if ('s' in x) {
-        out += `<text:span text:style-name="PTW_${x.s}">${xml(x.t)}</text:span>`;
+        const styled = `<text:span text:style-name="PTW_${x.s}">${xml(x.t)}</text:span>`;
+        out += x.m === undefined ? styled : `<text:span text:style-name="PTW_mk${x.m}">${styled}</text:span>`;
+      } else if ('m' in x) {
+        out += `<text:span text:style-name="PTW_mk${x.m}">${xml(x.t.replace(/\s+/g, ' '))}</text:span>`;
       } else if ('f' in x) {
         out += this.note(x.f);
       }
@@ -354,6 +387,25 @@ class ContentWriter {
         ? `<text:span text:style-name="PTW_bd">${xml(`${this.chapter}${LABELS[this.lang].sep}${this.verse}`)}</text:span> `
         : '';
     return `<text:note text:id="n${n}" text:note-class="${cls}"><text:note-citation>${alpha(n)}</text:note-citation><text:note-body><text:p text:style-name="${cls === 'footnote' ? 'Footnote' : 'Endnote'}">${ref}${xml(text)}</text:p></text:note-body></text:note>`;
+  }
+
+  /** Legend of the mark rules at the end of the document. */
+  legend() {
+    const counts = this.input.markCounts;
+    const items = this.s.marks.flatMap((m, i) => {
+      if (!this.rules[i]) return [];
+      const count = this.s.markCounts ? ` <text:span text:style-name="PTW_count">(${counts[i] ?? 0}×)</text:span>` : '';
+      return [`<text:span text:style-name="PTW_mk${i}">${xml(markLabel(m))}</text:span>${count}`];
+    });
+    if (!items.length) return;
+    const title = xml(LABELS[this.lang].legend);
+    if (this.s.markLegendPage) {
+      this.para('PTW_legend_page', title);
+      for (const item of items) this.para('PTW_legend', item);
+      return;
+    }
+    this.para('PTW_s1', title);
+    this.para('PTW_legend', items.join('<text:tab/>'));
   }
 
   xml(): string {

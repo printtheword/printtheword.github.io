@@ -1,4 +1,5 @@
 import { BOOK_BY_ID } from './books.ts';
+import { countMarks } from './marks.ts';
 import { formatRange, type Range } from './reference.ts';
 import { selectRange, type SelectedChapter } from './select.ts';
 import type { Block, BookData, Translation, TranslationIndex } from './types.ts';
@@ -26,7 +27,8 @@ export function buildDocument(
     const wholeBook = label === name;
     return { bookId: range.book, bookName: name, title: wholeBook ? book.title || name : label, chapters: selectRange(book, range) };
   });
-  return { translation, label: labels.join('; '), sections, settings };
+  const doc = { translation, label: labels.join('; '), sections, settings, markCounts: [] };
+  return { ...doc, markCounts: countMarks(doc) };
 }
 
 /** File name for the download, e.g. "Galater_1_12-17_Luther_1912.pdf". */

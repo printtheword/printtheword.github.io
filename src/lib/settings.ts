@@ -5,6 +5,8 @@ export type Paper = 'a3' | 'a4' | 'a5' | 'a6' | 'us-letter' | 'custom';
 export type ChapterStyle = 'dropcap' | 'margin' | 'heading' | 'none';
 export type VerseStyle = 'super' | 'inline' | 'bold' | 'none';
 export type FootnoteMode = 'none' | 'page' | 'end';
+/** where a new page starts: at every reference, also at every chapter, or only when the page is full */
+export type PageBreak = 'section' | 'chapter' | 'none';
 export type MarkLine = 'none' | 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
 export type MarkFrame = 'none' | 'box' | 'rounded' | 'dashed' | 'oval';
 
@@ -86,6 +88,7 @@ export interface Settings {
   wordsOfJesusRed: boolean;
   /** start every verse on a new line (otherwise the paragraphs of the translation) */
   versePerLine: boolean;
+  pageBreak: PageBreak;
   runningHeader: boolean;
   pageNumbers: boolean;
 
@@ -142,6 +145,7 @@ export const DEFAULTS: Settings = {
   footnotes: 'page',
   wordsOfJesusRed: false,
   versePerLine: false,
+  pageBreak: 'section',
   runningHeader: true,
   pageNumbers: true,
 
@@ -240,6 +244,7 @@ const CHOICES: Partial<Record<keyof Settings, readonly string[]>> = {
   chapterStyle: ['dropcap', 'margin', 'heading', 'none'],
   verseStyle: ['super', 'inline', 'bold', 'none'],
   footnotes: ['none', 'page', 'end'],
+  pageBreak: ['section', 'chapter', 'none'],
   notesArea: ['none', 'lines', 'blank', 'verses'],
   font: FONTS.map((f) => f.name),
   headingFont: FONTS.map((f) => f.name),

@@ -136,8 +136,10 @@ function stylesXml({ settings: s, translation, sections }: DocumentInput): strin
     s.twoSided
       ? `<style:header>${hfPara('PTW_hf_r', xml(name))}</style:header><style:header-left>${hfPara('PTW_hf_l', xml(name))}</style:header-left>`
       : `<style:header>${hfPara('PTW_hf_r', xml(name))}</style:header>`;
+  // without page breaks all references share the first master page and its header
+  const bookNames = [...new Set(sections.map((sec) => sec.bookName))].join(' / ');
   const masters = sections.map((sec, i) => {
-    const running = s.runningHeader ? header(sec.bookName) : '';
+    const running = s.runningHeader ? header(s.pageBreak === 'none' ? bookNames : sec.bookName) : '';
     const master = `<style:master-page style:name="PTW_book_${i}" style:page-layout-name="${s.runningHeader ? 'PTW_pm_h' : 'PTW_pm'}">${running}${footer}</style:master-page>`;
     // like the PDF, the very first page has no running header
     if (i > 0 || !s.runningHeader) return master;
@@ -256,6 +258,8 @@ class ContentWriter {
   private lang: 'de' | 'en';
   // state while writing a section
   private master?: string;
+  /** the next paragraph starts a new page */
+  private breakBefore = false;
   private chapter = 0;
   private verse = 0;
   private rules: MarkRules;
@@ -282,15 +286,18 @@ class ContentWriter {
     }
   }
 
-  /** Name of an automatic style deriving from `parent` with a master page and/or a drop cap. */
-  private styleFor(parent: string, master?: string, dropcap?: number): string {
-    if (!master && !dropcap) return parent;
-    const key = `${parent}|${master ?? ''}|${dropcap ?? ''}`;
+  /** Name of an automatic style deriving from `parent` with a master page, a page break and/or a drop cap. */
+  private styleFor(parent: string, master?: string, dropcap?: number, breakBefore = false): string {
+    if (!master && !dropcap && !breakBefore) return parent;
+    const key = `${parent}|${master ?? ''}|${dropcap ?? ''}|${breakBefore ? 'page' : ''}`;
     const existing = this.auto.get(key);
     if (existing) return existing.match(/style:name="([^"]+)"/)![1];
     const name = `P${this.auto.size + 1}`;
-    const props = dropcap
-      ? `<style:paragraph-properties><style:drop-cap style:length="${dropcap}" style:lines="2" style:distance="${pt(num(this.s.fontSize, 11) * 0.35)}" style:style-name="PTW_chapcap"/></style:paragraph-properties>`
+    const cap = dropcap
+      ? `<style:drop-cap style:length="${dropcap}" style:lines="2" style:distance="${pt(num(this.s.fontSize, 11) * 0.35)}" style:style-name="PTW_chapcap"/>`
+      : '';
+    const props = cap || breakBefore
+      ? `<style:paragraph-properties${breakBefore ? ' fo:break-before="page"' : ''}>${cap}</style:paragraph-properties>`
       : '';
     this.auto.set(
       key,
@@ -301,19 +308,23 @@ class ContentWriter {
 
   /** Adds a paragraph; the first paragraph of a section switches to its master page. */
   private para(style: string, content: string, opts: { heading?: number; dropcap?: number } = {}) {
-    const name = this.styleFor(style, this.master, opts.dropcap);
+    const name = this.styleFor(style, this.master, opts.dropcap, this.breakBefore);
     this.master = undefined;
+    this.breakBefore = false;
     if (opts.heading) this.body.push(`<text:h text:style-name="${name}" text:outline-level="${opts.heading}">${content}</text:h>`);
     else this.body.push(`<text:p text:style-name="${name}">${content}</text:p>`);
   }
 
   section(section: Section, i: number) {
     const { s } = this;
-    this.master = i === 0 && s.runningHeader ? 'PTW_first' : `PTW_book_${i}`;
+    this.master = i === 0 && s.runningHeader ? 'PTW_first' : i > 0 && s.pageBreak === 'none' ? undefined : `PTW_book_${i}`;
     if (s.showBookTitle) this.para('Heading_20_1', xml(section.title), { heading: 1 });
     const cols = this.columnStyle;
     if (cols) this.body.push(`<text:section text:style-name="${cols}" text:name="Text${++this.sectionCount}">`);
-    for (const ch of section.chapters) this.chapterContent(section, ch);
+    for (const [k, ch] of section.chapters.entries()) {
+      this.breakBefore = k > 0 && s.pageBreak === 'chapter';
+      this.chapterContent(section, ch);
+    }
     if (cols) {
       // an empty section can't hold the master page switch of the next book
       if (this.master) this.para('PTW_text', '');

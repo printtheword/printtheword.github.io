@@ -64,6 +64,16 @@ describe('generateOdt', () => {
     expect(content).toContain('style:master-page-name="PTW_book_1"');
     expect(styles).toContain('<style:master-page style:name="PTW_book_1"');
   });
+  it('breaks the page before every chapter on request', () => {
+    const { 'content.xml': content } = files(odt('deu1912', 'Joh 1-3', { pageBreak: 'chapter' }));
+    expect(content.match(/fo:break-before="page"/g)?.length).toBeGreaterThan(0);
+    expect(files(odt('deu1912', 'Joh 1-3'))['content.xml']).not.toContain('fo:break-before');
+  });
+  it('keeps all references on the first master page without page breaks', () => {
+    const { 'content.xml': content, 'styles.xml': styles } = files(odt('deu1912', 'Joh 3,16, Röm 8,28', { pageBreak: 'none' }));
+    expect(content).not.toContain('PTW_book_1');
+    expect(styles).toMatch(/style:name="PTW_book_0"[^]*?Johannes \/ Römer/);
+  });
   it('widens the column gap by the notes area of each column', () => {
     const content = files(odt('engwebp', 'Ps 23', { columns: 2, columnGap: 7, notesArea: 'verses', notesWidth: 30 }))['content.xml'];
     expect(content).toContain('fo:column-gap="37mm"');

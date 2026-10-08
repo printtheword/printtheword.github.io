@@ -88,6 +88,15 @@ describe('generateTypst', () => {
     expect(generateTypst(doc('deu1912', 'Eph 2', { marks, markLegendPage: true }))).toMatch(/#pagebreak\(weak: true\)\n#block\(below: 1\.2em[^\n]*\[Legende\]/);
     expect(generateTypst(doc('deu1912', 'Eph 2', { marks, markLegend: false }))).not.toContain('Legende');
   });
+  it('starts new pages per reference, per chapter or only when full', () => {
+    const breaks = (ref: string, s: Partial<LayoutSettings>) => generateTypst(doc('deu1912', ref, s)).match(/#pagebreak\(weak: true\)/g)?.length;
+    expect(breaks('Joh 1-3', {})).toBe(1);
+    expect(breaks('Joh 1-3', { pageBreak: 'chapter' })).toBe(3);
+    expect(breaks('Joh 3,16, Joh 12,7', {})).toBe(2);
+    const src = generateTypst(doc('deu1912', 'Joh 3,16, Joh 12,7', { pageBreak: 'none' }));
+    expect(src.match(/#pagebreak\(weak: true\)/g)).toHaveLength(1);
+    expect(src).toMatch(/#booktitle\[[^\n]*\n[^]*#booktitlein\[/);
+  });
   it('truncates long documents for the preview', () => {
     const d = doc('deu1912', 'Psalmen');
     const { doc: short, truncated } = truncateDocument(d, 5000);
@@ -123,6 +132,8 @@ describe('typst compilation (wasm)', () => {
       ...newMark(i % 2 ? '' : LIGHT_COLORS[i]), terms: ['Glaube*', 'Gesetz*', 'Gott*', 'Sünde*', 'gerecht*', 'Werke*'][i],
       line: l.value, frame: MARK_FRAMES[i % MARK_FRAMES.length].value, bold: i === 1, italic: i === 2, color: i === 3 ? '#1565c0' : '',
     })) }],
+    ['deu1912', 'Joh 1-2', { pageBreak: 'chapter', columns: 2 }],
+    ['engwebp', 'John 3:16, Rom 8:28-39', { pageBreak: 'none', columns: 2, columnRule: true }],
     ['engwebp', 'John 8', { wordsOfJesusRed: true, columns: 3, markLegendPage: true, marks: [{ ...newMark(), terms: 'truth' }, { ...newMark(), terms: 'light, I am', line: 'wavy', frame: 'oval' }] }],
     ...PRESETS.map((p): [string, string, Partial<LayoutSettings>] => ['deutkw', 'Röm 1', p.settings]),
   ];

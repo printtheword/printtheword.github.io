@@ -258,6 +258,8 @@ ${s.marks.map((m, i) => `#let mk${i}(body) = ${markFunction(m)}`).join('\n')}
 #let chaphead(t) = block(above: 1.4em, below: 0.7em, sticky: true, text(font: ${headingFont}, size: 1.2em, weight: "bold", fill: ${chapFill}, t))
 #let booktitle(t) = place(top + center, float: true, scope: "parent", clearance: 1.5em,
   [#text(font: ${headingFont}, size: 1.9em, weight: "bold", fill: ${headFill}, t)#metadata(none) <booktitle-end>])
+#let booktitlein(t) = block(above: 2.2em, below: 1.2em, sticky: true, width: 100%,
+  align(center, text(font: ${headingFont}, size: 1.9em, weight: "bold", fill: ${headFill}, t)))
 #let hd(kind, body) = {
   if kind == "ms" { block(above: 1.6em, below: 0.8em, sticky: true, align(center, text(font: ${headingFont}, size: 1.15em, weight: "bold", fill: ${headFill}, body))) }
   else if kind == "s1" { block(above: 1.3em, below: 0.6em, sticky: true, text(font: ${headingFont}, weight: "bold", fill: ${headFill}, body)) }
@@ -303,9 +305,14 @@ class SectionWriter {
 
   write(): string {
     const { section, s } = this;
-    this.lines.push('#pagebreak(weak: true)');
-    if (s.showBookTitle) this.lines.push(`#booktitle[${esc(section.title)}]`);
-    for (const ch of section.chapters) this.writeChapter(ch);
+    // without page breaks, later references continue on the same page, below a title in the text
+    const newPage = s.pageBreak !== 'none' || this.index === 0;
+    if (newPage) this.lines.push('#pagebreak(weak: true)');
+    if (s.showBookTitle) this.lines.push(`#${newPage ? 'booktitle' : 'booktitlein'}[${esc(section.title)}]`);
+    for (const [i, ch] of section.chapters.entries()) {
+      if (i > 0 && s.pageBreak === 'chapter') this.lines.push('#pagebreak(weak: true)');
+      this.writeChapter(ch);
+    }
     if (this.endnotes.length) {
       this.lines.push(`#endnotes([${this.labels.notes}], (\n${this.endnotes.join(',\n')},\n))`);
     }

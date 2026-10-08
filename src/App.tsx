@@ -408,6 +408,16 @@ export default function App() {
               <Toggle label="„Kapitel 3“ statt „3“" checked={settings.chapterLabel} onChange={set('chapterLabel')} />
             </Show>
             <Segmented
+              label="Neue Seite"
+              value={settings.pageBreak}
+              options={[
+                { value: 'section', label: 'Je Stelle' },
+                { value: 'chapter', label: 'Je Kapitel' },
+                { value: 'none', label: 'Fortlaufend' },
+              ]}
+              onChange={set('pageBreak')}
+            />
+            <Segmented
               label="Versnummern"
               value={settings.verseStyle}
               options={[

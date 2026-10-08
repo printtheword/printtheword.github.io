@@ -1,0 +1,100 @@
+[
+  {
+    "id": "deu1912",
+    "name": "Lutherbibel 1912",
+    "short": "Luther 1912",
+    "lang": "de",
+    "year": "1912",
+    "license": "Gemeinfrei (Public Domain)",
+    "source": "https://ebible.org/find/details.php?id=deu1912",
+    "features": {
+      "headings": false,
+      "footnotes": false,
+      "wordsOfJesus": false
+    }
+  },
+  {
+    "id": "deuelo",
+    "name": "Unrevidierte Elberfelder 1905",
+    "short": "Elberfelder 1905",
+    "lang": "de",
+    "year": "1905",
+    "license": "Gemeinfrei (Public Domain)",
+    "source": "https://ebible.org/find/details.php?id=deuelo",
+    "features": {
+      "headings": false,
+      "footnotes": false,
+      "wordsOfJesus": false
+    }
+  },
+  {
+    "id": "deutkw",
+    "name": "Textbibel von Kautzsch und Weizsäcker 1906",
+    "short": "Textbibel 1906",
+    "lang": "de",
+    "year": "1906",
+    "license": "Gemeinfrei (Public Domain)",
+    "source": "https://ebible.org/find/details.php?id=deutkw",
+    "features": {
+      "headings": true,
+      "footnotes": false,
+      "wordsOfJesus": false
+    }
+  },
+  {
+    "id": "engbsb",
+    "name": "Berean Standard Bible",
+    "short": "BSB",
+    "lang": "en",
+    "year": "2020",
+    "license": "Public Domain (dedicated to the public domain by the Berean Bible translation committee)",
+    "source": "https://ebible.org/find/details.php?id=engbsb",
+    "features": {
+      "headings": true,
+      "footnotes": true,
+      "wordsOfJesus": false
+    }
+  },
+  {
+    "id": "engwebp",
+    "name": "World English Bible",
+    "short": "WEB",
+    "lang": "en",
+    "year": "2020",
+    "license": "Public Domain. \"World English Bible\" is a trademark of eBible.org.",
+    "source": "https://ebible.org/find/details.php?id=engwebp",
+    "features": {
+      "headings": true,
+      "footnotes": true,
+      "wordsOfJesus": true
+    }
+  },
+  {
+    "id": "eng-kjv2006",
+    "name": "King James Version",
+    "short": "KJV",
+    "lang": "en",
+    "year": "1769",
+    "license": "Public Domain (outside the United Kingdom; in the UK the KJV is subject to Crown patent).",
+    "source": "https://ebible.org/find/details.php?id=eng-kjv2006",
+    "features": {
+      "headings": true,
+      "footnotes": true,
+      "wordsOfJesus": true
+    }
+  },
+  {
+    "id": "eng-asv",
+    "name": "American Standard Version",
+    "short": "ASV",
+    "lang": "en",
+    "year": "1901",
+    "license": "Public Domain",
+    "source": "https://ebible.org/find/details.php?id=eng-asv",
+    "features": {
+      "headings": true,
+      "footnotes": true,
+      "wordsOfJesus": false
+    }
+  }
+]

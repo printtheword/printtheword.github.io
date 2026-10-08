@@ -160,6 +160,11 @@ export default function App() {
     }),
   );
 
+  createEffect(() => {
+    const label = source()?.label;
+    document.title = label ? `Print the word – ${label}` : 'Print the word – Bibel ausdrucken';
+  });
+
   const [copied, setCopied] = createSignal(false);
   async function share() {
     const url = location.href;
